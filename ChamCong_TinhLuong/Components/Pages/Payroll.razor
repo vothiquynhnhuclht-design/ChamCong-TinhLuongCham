@@ -1,0 +1,374 @@
+@page "/payroll"
+@inject CalculatePayrollUseCase CalculatePayroll
+@inject LockPayrollPeriodUseCase LockPayroll
+@inject IPayslipRepository PayslipRepo
+@inject IEmployeeRepository EmployeeRepo
+
+<PageTitle>Quản Lý Tính Lương & Phiếu Lương</PageTitle>
+
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-cash-stack text-success me-2"></i>Tính Lương & Phiếu Lương (Header - Line)
+            </h3>
+            <p class="text-muted small mb-0">
+                Tuân thủ 2 Luật Nghiệp vụ: Động cơ tính lương trong Database Transaction & Khóa sổ (Locked) bảo mật cấp dòng
+            </p>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary fw-bold shadow-sm" @onclick="ExecutePayrollCalculationAsync" disabled="@(isLocked || isProcessing)">
+                <i class="bi bi-gear-fill me-1 @(isProcessing ? "spin" : "")"></i>
+                @(isProcessing ? "Đang Tính Toán..." : "Tính Lương Hàng Loạt")
+            </button>
+            <button class="btn btn-danger fw-bold shadow-sm" @onclick="ExecuteLockPeriodAsync" disabled="@(isLocked || !payslips.Any())">
+                <i class="bi bi-lock-fill me-1"></i> Khóa Sổ Kỳ Này
+            </button>
+        </div>
+    </div>
+
+    <!-- Feedback Alerts -->
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2 fs-5"></i>@successMessage
+            <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>@errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+        </div>
+    }
+
+    <!-- Control Filter Bar -->
+    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white mb-4">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Kỳ Lương (Tháng/Năm)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-calendar3"></i></span>
+                    <select class="form-select" @bind="selectedMonth" @bind:after="LoadPayslipsAsync">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            <option value="@m">Tháng @m</option>
+                        }
+                    </select>
+                    <select class="form-select" @bind="selectedYear" @bind:after="LoadPayslipsAsync">
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Số Ngày Công Chuẩn</label>
+                <input type="number" class="form-control" @bind="standardWorkDays" step="0.5" min="1" max="31" />
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Trạng Thái Sổ</label>
+                <div>
+                    @if (isLocked)
+                    {
+                        <span class="badge bg-danger fs-6 px-3 py-2">
+                            <i class="bi bi-lock-fill me-1"></i> ĐÃ KHÓA SỔ (LOCKED)
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                            <i class="bi bi-pencil me-1"></i> BẢN NHÁP (DRAFT)
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="col-12 col-md-3 text-md-end mt-md-4">
+                <button class="btn btn-outline-secondary w-100" @onclick="LoadPayslipsAsync">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Tải Lại Danh Sách
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Numbers -->
+    @if (payslips.Any())
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-primary border-4">
+                    <span class="text-muted small text-uppercase fw-semibold">Số Nhân Viên Có Lương</span>
+                    <h3 class="fw-bold text-dark mt-1 mb-0">@payslips.Count</h3>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-success border-4">
+                    <span class="text-muted small text-uppercase fw-semibold">Tổng Chi Trả Thực Nhận (Net)</span>
+                    <h4 class="fw-bold text-success mt-1 mb-0">@payslips.Sum(p => p.NetSalary).ToString("N0") đ</h4>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-danger border-4">
+                    <span class="text-muted small text-uppercase fw-semibold">Tổng Các Khoản Trích Trừ</span>
+                    <h4 class="fw-bold text-danger mt-1 mb-0">@payslips.Sum(p => p.TotalDeductions).ToString("N0") đ</h4>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-info border-4">
+                    <span class="text-muted small text-uppercase fw-semibold">Tổng Thu Nhập (Gross)</span>
+                    <h4 class="fw-bold text-info mt-1 mb-0">@payslips.Sum(p => p.GrossSalary).ToString("N0") đ</h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payslips Table (Header View) -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Mã & Nhân Viên</th>
+                            <th class="text-center">Công Thực Tế</th>
+                            <th class="text-center">Giờ OT</th>
+                            <th class="text-end">Lương Cơ Bản</th>
+                            <th class="text-end">Tổng Thu Nhập (Gross)</th>
+                            <th class="text-end">Khấu Trừ</th>
+                            <th class="text-end">Thực Nhận (Net)</th>
+                            <th class="text-center">Trạng Thái</th>
+                            <th class="text-end pe-3">Chi Tiết (Lines)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var slip in payslips)
+                        {
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="fw-bold text-dark">@slip.Employee?.FullName</div>
+                                    <div class="small text-muted">@slip.Employee?.EmployeeCode • @slip.Employee?.Position</div>
+                                </td>
+                                <td class="text-center fw-semibold text-primary">
+                                    @slip.ActualWorkDays / @slip.StandardWorkDays công
+                                </td>
+                                <td class="text-center">
+                                    @(slip.OvertimeHours > 0 ? slip.OvertimeHours + " h" : "-")
+                                </td>
+                                <td class="text-end">@slip.BasicSalary.ToString("N0") đ</td>
+                                <td class="text-end fw-semibold text-info">@slip.GrossSalary.ToString("N0") đ</td>
+                                <td class="text-end fw-semibold text-danger">-@slip.TotalDeductions.ToString("N0") đ</td>
+                                <td class="text-end fw-bold text-success fs-6">@slip.NetSalary.ToString("N0") đ</td>
+                                <td class="text-center">
+                                    <span class="badge @(slip.Status == PayslipStatus.Locked ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning")">
+                                        @slip.Status
+                                    </span>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewDetailModal(slip)">
+                                        <i class="bi bi-eye-fill me-1"></i> Xem Phiếu
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm rounded-3 p-5 text-center bg-white">
+            <i class="bi bi-calculator fs-1 text-muted mb-2"></i>
+            <h5>Chưa có dữ liệu bảng lương tháng @selectedMonth/@selectedYear</h5>
+            <p class="text-muted small mb-3">Nhấn nút "Tính Lương Hàng Loạt" để khởi chạy thuật toán tính lương trong Database Transaction.</p>
+            <div>
+                <button class="btn btn-primary" @onclick="ExecutePayrollCalculationAsync">
+                    <i class="bi bi-play-fill me-1"></i> Chạy Tính Lương Tháng @selectedMonth
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal Chi Tiết Header - Line (Phiếu Lương Cá Nhân) -->
+@if (selectedPayslip != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-3">
+                <div class="modal-header bg-dark text-white">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">
+                            <i class="bi bi-receipt text-warning me-2"></i>PHIẾU LƯƠNG CHI TIẾT (PAYSLIP)
+                        </h5>
+                        <div class="small text-white-50">Kỳ lương: Tháng @selectedPayslip.Month/@selectedPayslip.Year • Trạng thái: @selectedPayslip.Status</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => selectedPayslip = null"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <!-- Employee Info Header Card -->
+                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white mb-3">
+                        <div class="row g-2 text-sm">
+                            <div class="col-6 col-md-4">
+                                <span class="text-muted small">Họ và Tên:</span>
+                                <div class="fw-bold text-dark">@selectedPayslip.Employee?.FullName</div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <span class="text-muted small">Mã Nhân Viên:</span>
+                                <div class="fw-bold text-primary">@selectedPayslip.Employee?.EmployeeCode</div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <span class="text-muted small">Chức Vụ / Vị Trí:</span>
+                                <div class="fw-bold text-dark">@selectedPayslip.Employee?.Position</div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <span class="text-muted small">Ngày Công Chuẩn:</span>
+                                <div class="fw-bold">@selectedPayslip.StandardWorkDays ngày</div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <span class="text-muted small">Ngày Công Thực Tế:</span>
+                                <div class="fw-bold text-primary">@selectedPayslip.ActualWorkDays công</div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <span class="text-muted small">Làm Thêm Giờ (OT):</span>
+                                <div class="fw-bold text-purple">@selectedPayslip.OvertimeHours giờ</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Line Items Breakdown (PayslipLine) -->
+                    <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-white mb-3">
+                        <div class="card-header bg-white fw-bold py-2 border-bottom">
+                            <i class="bi bi-list-columns-reverse me-1 text-primary"></i> Chi Tiết Các Khoản Thu Nhập & Khấu Trừ (Header - Line)
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped align-middle mb-0 text-sm">
+                                <thead>
+                                    <tr class="table-light">
+                                        <th class="ps-3">Khoản Mục</th>
+                                        <th>Loại</th>
+                                        <th>Công Thức / Diễn Giải</th>
+                                        <th class="text-end pe-3">Số Tiền</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var line in selectedPayslip.Lines)
+                                    {
+                                        <tr>
+                                            <td class="ps-3 fw-semibold text-dark">@line.ItemName</td>
+                                            <td>
+                                                <span class="badge @(line.LineType == PayslipLineType.Earning ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger")">
+                                                    @(line.LineType == PayslipLineType.Earning ? "Thu Nhập (+)" : "Khấu Trừ (-)")
+                                                </span>
+                                            </td>
+                                            <td class="text-muted small">@line.CalculationNote</td>
+                                            <td class="text-end pe-3 fw-bold @(line.LineType == PayslipLineType.Earning ? "text-success" : "text-danger")">
+                                                @(line.LineType == PayslipLineType.Earning ? "+" : "-")@line.Amount.ToString("N0") đ
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Net Salary Summary Box -->
+                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-success text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-white-50 text-uppercase small fw-semibold">LƯƠNG THỰC NHẬN (NET SALARY)</span>
+                                <div class="small">Lương = Thu nhập tổng (@selectedPayslip.GrossSalary.ToString("N0") đ) - Khấu trừ (@selectedPayslip.TotalDeductions.ToString("N0") đ)</div>
+                            </div>
+                            <h2 class="fw-bold mb-0">@selectedPayslip.NetSalary.ToString("N0") VNĐ</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white">
+                    <button type="button" class="btn btn-secondary" @onclick="() => selectedPayslip = null">Đóng</button>
+                    <button type="button" class="btn btn-primary" onclick="window.print()">
+                        <i class="bi bi-printer-fill me-1"></i> In Phiếu Lương
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private int selectedMonth = 10;
+    private int selectedYear = 2026;
+    private double standardWorkDays = 22.0;
+    private bool isLocked = false;
+    private bool isProcessing = false;
+    private string? successMessage;
+    private string? errorMessage;
+
+    private List<Payslip> payslips = new();
+    private Payslip? selectedPayslip;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPayslipsAsync();
+    }
+
+    private async Task LoadPayslipsAsync()
+    {
+        payslips = (await PayslipRepo.GetPayslipsByPeriodAsync(selectedMonth, selectedYear)).ToList();
+        isLocked = await PayslipRepo.IsPeriodLockedAsync(selectedMonth, selectedYear);
+    }
+
+    private async Task ExecutePayrollCalculationAsync()
+    {
+        isProcessing = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var result = await CalculatePayroll.ExecuteAsync(selectedMonth, selectedYear, standardWorkDays);
+            if (result.Success)
+            {
+                successMessage = result.Message;
+                await LoadPayslipsAsync();
+            }
+        }
+        catch (PayslipLockedException ex)
+        {
+            errorMessage = $"[Luật Nghiệp vụ 2 Chặn]: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi tính lương: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task ExecuteLockPeriodAsync()
+    {
+        try
+        {
+            await LockPayroll.ExecuteAsync(selectedMonth, selectedYear, "Admin HR");
+            isLocked = true;
+            successMessage = $"🔒 [Luật Nghiệp vụ 2]: Kỳ lương tháng {selectedMonth}/{selectedYear} đã được KHÓA SỔ thành công! Mọi thao tác tính lại hoặc sửa đổi đã bị vô hiệu hóa.";
+            await LoadPayslipsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Lỗi khi khóa sổ: {ex.Message}";
+        }
+    }
+
+    private void ViewDetailModal(Payslip slip)
+    {
+        selectedPayslip = slip;
+    }
+}

@@ -1,0 +1,13 @@
+## Visual Studio / .NET Ignore
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.db
+*.sqlite
+appsettings.Development.json

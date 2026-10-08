@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChamCong_TinhLuong.CoreBusiness\ChamCong_TinhLuong.CoreBusiness.csproj" />
+    <ProjectReference Include="..\ChamCong_TinhLuong.UseCases\ChamCong_TinhLuong.UseCases.csproj" />
+    <ProjectReference Include="..\ChamCong_TinhLuong.Plugins.DataStore.InMemory\ChamCong_TinhLuong.Plugins.DataStore.InMemory.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

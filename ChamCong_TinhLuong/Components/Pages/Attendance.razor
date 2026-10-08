@@ -1,0 +1,305 @@
+@page "/attendance"
+@inject AttendanceDraftService DraftService
+@inject IEmployeeRepository EmployeeRepo
+@implements IDisposable
+
+<PageTitle>Bảng Công Nháp (State Management)</PageTitle>
+
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h3 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-calendar2-check-fill text-primary me-2"></i>Bảng Công Nháp (Draft Staging)
+                </h3>
+                <span class="badge bg-warning text-dark fw-bold">Scoped Service</span>
+            </div>
+            <p class="text-muted small mb-0">
+                Mô hình Giỏ Hàng (ShoppingCart Pattern): Dữ liệu lưu tạm trong phiên làm việc, cho phép hiệu chỉnh trước khi chốt lưu vào DB.
+            </p>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" @onclick="ReloadDraftAsync">
+                <i class="bi bi-arrow-clockwise me-1"></i> Làm Mới Nháp
+            </button>
+            <button class="btn btn-success fw-bold shadow-sm" @onclick="CommitDraftAsync" disabled="@(!DraftService.DraftItems.Any())">
+                <i class="bi bi-check-circle-fill me-1"></i> Chốt Duyệt Bảng Công (@DraftService.DraftItems.Count dòng)
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(alertMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-check2-circle me-2 fs-5"></i>@alertMessage
+            <button type="button" class="btn-close" @onclick="() => alertMessage = null"></button>
+        </div>
+    }
+
+    <!-- Filter & Month Controls -->
+    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white mb-3">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Kỳ Chấm Công (Tháng/Năm)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-calendar-event"></i></span>
+                    <select class="form-select" @bind="selectedMonth">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            <option value="@m">Tháng @m</option>
+                        }
+                    </select>
+                    <select class="form-select" @bind="selectedYear">
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Lọc Theo Nhân Viên</label>
+                <select class="form-select" @bind="filterEmployeeId">
+                    <option value="0">-- Tất cả nhân viên --</option>
+                    @foreach (var emp in employeeList)
+                    {
+                        <option value="@emp.Id">@emp.EmployeeCode - @emp.FullName</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Lọc Trạng Thái</label>
+                <select class="form-select" @bind="filterStatus">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    <option value="Present">Đi làm đủ công</option>
+                    <option value="Late">Đi trễ</option>
+                    <option value="Absent">Vắng không phép</option>
+                </select>
+            </div>
+
+            <div class="col-12 col-md-3 text-md-end mt-md-4">
+                <button class="btn btn-primary w-100" @onclick="InitializeDraftAsync">
+                    <i class="bi bi-magic me-1"></i> Nạp Bảng Công Tháng @selectedMonth
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Metrics -->
+    @if (DraftService.DraftItems.Any())
+    {
+        var filteredItems = GetFilteredItems().ToList();
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="bg-primary-subtle text-primary p-2 rounded-2 text-center">
+                    <span class="small d-block">Tổng Bản Ghi Nháp</span>
+                    <strong class="fs-5">@filteredItems.Count</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="bg-success-subtle text-success p-2 rounded-2 text-center">
+                    <span class="small d-block">Tổng Công Tính Được</span>
+                    <strong class="fs-5">@filteredItems.Sum(x => x.ActualWorkDays).ToString("N1")</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="bg-info-subtle text-info p-2 rounded-2 text-center">
+                    <span class="small d-block">Tổng Giờ OT (150%)</span>
+                    <strong class="fs-5">@filteredItems.Sum(x => x.OvertimeHours).ToString("N1") h</strong>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="bg-danger-subtle text-danger p-2 rounded-2 text-center">
+                    <span class="small d-block">Tổng Phút Đi Trễ</span>
+                    <strong class="fs-5">@filteredItems.Sum(x => x.LateMinutes) p</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Draft Grid -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-nowrap">
+                    <thead class="table-light small text-uppercase">
+                        <tr>
+                            <th class="ps-3">Nhân Viên</th>
+                            <th>Ngày Làm Việc</th>
+                            <th>Giờ Vào/Ra</th>
+                            <th style="width: 130px;">Công Thực Tế</th>
+                            <th style="width: 120px;">Giờ OT</th>
+                            <th>Đi Trễ</th>
+                            <th>Trạng Thái</th>
+                            <th class="pe-3">Ghi Chú</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in filteredItems.Take(50))
+                        {
+                            <tr class="@(item.Status == AttendanceStatus.Absent ? "table-danger" : item.Status == AttendanceStatus.Late ? "table-warning" : "")">
+                                <td class="ps-3">
+                                    <div class="fw-semibold text-dark">@item.FullName</div>
+                                    <div class="small text-muted">@item.EmployeeCode • @item.DepartmentName</div>
+                                </td>
+                                <td>
+                                    <div class="fw-medium">@item.WorkDate.ToString("dd/MM/yyyy")</div>
+                                    <div class="small text-muted">@item.WorkDate.ToString("dddd")</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">
+                                        @(item.CheckIn?.ToString(@"hh\:mm") ?? "--") - @(item.CheckOut?.ToString(@"hh\:mm") ?? "--")
+                                    </span>
+                                </td>
+                                <td>
+                                    <!-- Inline Edit Work Days -->
+                                    <select class="form-select form-select-sm" 
+                                            value="@item.ActualWorkDays" 
+                                            @onchange="(e) => OnWorkDaysChanged(item, e)">
+                                        <option value="1.0">1.0 công</option>
+                                        <option value="0.5">0.5 công</option>
+                                        <option value="0.0">0.0 công</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <!-- Inline Edit OT Hours -->
+                                    <input type="number" step="0.5" min="0" max="8" 
+                                           class="form-control form-control-sm" 
+                                           value="@item.OvertimeHours" 
+                                           @onchange="(e) => OnOtChanged(item, e)" />
+                                </td>
+                                <td>
+                                    @if (item.LateMinutes > 0)
+                                    {
+                                        <span class="text-danger fw-bold">@item.LateMinutes phút</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-success small"><i class="bi bi-check"></i> Đúng giờ</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(item.Status)">
+                                        @item.Status
+                                    </span>
+                                </td>
+                                <td class="pe-3">
+                                    <input type="text" class="form-control form-control-sm" 
+                                           placeholder="Ghi chú..." 
+                                           value="@item.Note"
+                                           @onchange="(e) => item.Note = e.Value?.ToString()" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (filteredItems.Count > 50)
+            {
+                <div class="card-footer bg-light text-muted small text-center">
+                    Đang hiển thị 50 / @filteredItems.Count bản ghi.
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm rounded-3 p-5 text-center bg-white">
+            <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
+            <h5>Chưa có dữ liệu bảng công nháp trong phiên</h5>
+            <p class="text-muted small mb-3">Bấm nút "Nạp Bảng Công Tháng @selectedMonth" để tự động khởi tạo bảng nháp trong Scoped State Service.</p>
+            <div>
+                <button class="btn btn-primary" @onclick="InitializeDraftAsync">
+                    <i class="bi bi-plus-lg me-1"></i> Nạp Bảng Công Tháng @selectedMonth/2026
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int selectedMonth = 10;
+    private int selectedYear = 2026;
+    private int filterEmployeeId = 0;
+    private string filterStatus = "";
+    private string? alertMessage;
+    private List<Employee> employeeList = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        DraftService.OnChange += StateHasChanged;
+        employeeList = (await EmployeeRepo.GetAllEmployeesAsync()).ToList();
+
+        if (!DraftService.DraftItems.Any())
+        {
+            await DraftService.InitializeDraftForMonthAsync(selectedMonth, selectedYear);
+        }
+    }
+
+    public void Dispose()
+    {
+        DraftService.OnChange -= StateHasChanged;
+    }
+
+    private async Task InitializeDraftAsync()
+    {
+        await DraftService.InitializeDraftForMonthAsync(selectedMonth, selectedYear);
+        alertMessage = $"Đã nạp thành công bảng công nháp tháng {selectedMonth}/{selectedYear} vào Scoped State Service!";
+    }
+
+    private async Task ReloadDraftAsync()
+    {
+        await DraftService.InitializeDraftForMonthAsync(selectedMonth, selectedYear);
+    }
+
+    private IEnumerable<AttendanceDraftItemDto> GetFilteredItems()
+    {
+        var query = DraftService.DraftItems.AsEnumerable();
+        if (filterEmployeeId > 0)
+        {
+            query = query.Where(x => x.EmployeeId == filterEmployeeId);
+        }
+        if (!string.IsNullOrEmpty(filterStatus))
+        {
+            if (Enum.TryParse<AttendanceStatus>(filterStatus, out var status))
+            {
+                query = query.Where(x => x.Status == status);
+            }
+        }
+        return query;
+    }
+
+    private void OnWorkDaysChanged(AttendanceDraftItemDto item, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double val))
+        {
+            item.ActualWorkDays = val;
+            if (val == 0) item.Status = AttendanceStatus.Absent;
+            else if (item.LateMinutes > 0) item.Status = AttendanceStatus.Late;
+            else item.Status = AttendanceStatus.Present;
+        }
+    }
+
+    private void OnOtChanged(AttendanceDraftItemDto item, ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), out double val))
+        {
+            item.OvertimeHours = val;
+        }
+    }
+
+    private async Task CommitDraftAsync()
+    {
+        int count = await DraftService.CommitDraftToDatabaseAsync();
+        alertMessage = $"🎉 [Thành công]: Đã chốt duyệt và lưu chính thức {count} bản ghi chấm công vào Database!";
+    }
+
+    private string GetStatusBadgeClass(AttendanceStatus status) => status switch
+    {
+        AttendanceStatus.Present => "bg-success-subtle text-success",
+        AttendanceStatus.Late => "bg-warning-subtle text-warning",
+        AttendanceStatus.Absent => "bg-danger-subtle text-danger",
+        AttendanceStatus.LeavePaid => "bg-info-subtle text-info",
+        _ => "bg-secondary-subtle text-secondary"
+    };
+}

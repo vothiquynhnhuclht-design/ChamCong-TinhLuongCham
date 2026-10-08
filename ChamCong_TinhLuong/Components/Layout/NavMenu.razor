@@ -1,0 +1,82 @@
+<div class="sidebar-header px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+    <a class="navbar-brand d-flex align-items-center gap-2 text-decoration-none text-white m-0" href="">
+        <div class="brand-icon-box bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm">
+            <i class="bi bi-clock-history fs-5"></i>
+        </div>
+        <div>
+            <div class="fw-bold fs-6 lh-1 text-white">HR & Payroll</div>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold mt-1" style="font-size: 10px;">
+                ĐỀ TÀI 17 • V1.0
+            </span>
+        </div>
+    </a>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler d-md-none" id="sidebarToggle" />
+<label for="sidebarToggle" class="mobile-toggle-btn d-md-none">
+    <i class="bi bi-list fs-4"></i>
+</label>
+
+<div class="nav-scrollable custom-scrollbar">
+    <nav class="flex-column py-3">
+        
+        <!-- Nhóm 1: TỔNG QUAN -->
+        <div class="menu-section-label px-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
+            Hệ Thống
+        </div>
+        <div class="nav-item px-2 mb-1">
+            <NavLink class="nav-link custom-nav-link" href="" Match="NavLinkMatch.All">
+                <i class="bi bi-speedometer2 me-2 fs-6 icon-primary"></i>
+                <span class="nav-text">Tổng Quan Hệ Thống</span>
+            </NavLink>
+        </div>
+
+        <!-- Nhóm 2: QUẢN TRỊ NHÂN SỰ -->
+        <div class="menu-section-label px-3 mt-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
+            Quản Lý Nhân Sự
+        </div>
+        <div class="nav-item px-2 mb-1">
+            <NavLink class="nav-link custom-nav-link" href="employees">
+                <i class="bi bi-people-fill me-2 fs-6 icon-info"></i>
+                <span class="nav-text">Hồ Sơ & Hợp Đồng</span>
+            </NavLink>
+        </div>
+
+        <!-- Nhóm 3: CHẤM CÔNG -->
+        <div class="menu-section-label px-3 mt-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
+            Chấm Công & Thời Gian
+        </div>
+        <div class="nav-item px-2 mb-1">
+            <NavLink class="nav-link custom-nav-link" href="attendance">
+                <i class="bi bi-calendar2-check-fill me-2 fs-6 icon-warning"></i>
+                <span class="nav-text">Bảng Công Nháp (Draft)</span>
+            </NavLink>
+        </div>
+
+        <!-- Nhóm 4: TÍNH LƯƠNG -->
+        <div class="menu-section-label px-3 mt-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
+            Tiền Lương & Khấu Trừ
+        </div>
+        <div class="nav-item px-2 mb-1">
+            <NavLink class="nav-link custom-nav-link" href="payroll">
+                <i class="bi bi-cash-stack me-2 fs-6 icon-success"></i>
+                <span class="nav-text">Bảng Lương & Phiếu Lương</span>
+            </NavLink>
+        </div>
+    </nav>
+
+    <!-- User Profile Footer in Sidebar -->
+    <div class="sidebar-footer p-3 mt-auto border-top border-secondary border-opacity-25 bg-black bg-opacity-25">
+        <div class="d-flex align-items-center gap-2">
+            <div class="avatar-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center">
+                AD
+            </div>
+            <div class="overflow-hidden">
+                <div class="text-white fw-semibold small text-truncate">Admin Quản Trị HR</div>
+                <div class="text-white-50 text-truncate" style="font-size: 11px;">
+                    <i class="bi bi-circle-fill text-success me-1" style="font-size: 8px;"></i>Online • Toàn quyền
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

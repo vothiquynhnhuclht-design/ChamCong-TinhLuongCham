@@ -1,0 +1,101 @@
+.brand-icon-box {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+}
+
+.avatar-circle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 12px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    flex-shrink: 0;
+}
+
+.custom-scrollbar {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.custom-nav-link {
+    color: #cbd5e1 !important;
+    background: transparent;
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+    border-left: 3px solid transparent;
+}
+
+.custom-nav-link:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: translateX(3px);
+}
+
+.nav-item ::deep a.active {
+    color: #ffffff !important;
+    background: linear-gradient(90deg, rgba(37, 99, 235, 0.35) 0%, rgba(37, 99, 235, 0.1) 100%) !important;
+    border-left: 3px solid #3b82f6 !important;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.icon-primary { color: #60a5fa; }
+.icon-info { color: #38bdf8; }
+.icon-warning { color: #fbbf24; }
+.icon-success { color: #4ade80; }
+
+.navbar-toggler {
+    display: none;
+}
+
+.mobile-toggle-btn {
+    display: none;
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+    color: white;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 640.98px) {
+    .mobile-toggle-btn {
+        display: block;
+    }
+
+    .nav-scrollable {
+        display: none;
+    }
+
+    .navbar-toggler:checked ~ .nav-scrollable {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+@media (min-width: 641px) {
+    .nav-scrollable {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 65px);
+    }
+}

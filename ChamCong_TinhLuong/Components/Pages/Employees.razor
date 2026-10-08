@@ -1,0 +1,371 @@
+@page "/employees"
+@inject IEmployeeRepository EmployeeRepo
+@inject IContractRepository ContractRepo
+@inject IDepartmentRepository DepartmentRepo
+
+<PageTitle>Quản Lý Nhân Sự & Hợp Đồng</PageTitle>
+
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-people-fill text-primary me-2"></i>Hồ Sơ Nhân Sự & Hợp Đồng
+            </h3>
+            <p class="text-muted small mb-0">
+                Chuẩn hóa 3NF: Tách riêng bảng Hợp đồng (Contract) chứa lương cơ bản, phụ cấp và mức đóng bảo hiểm
+            </p>
+        </div>
+        <button class="btn btn-primary shadow-sm" @onclick="OpenAddModal">
+            <i class="bi bi-person-plus-fill me-1"></i> Thêm Nhân Viên Mới
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+            <p class="text-muted mt-2">Đang tải danh sách nhân sự...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Desktop Table View (Hidden on mobile < 576px) -->
+        <div class="card border-0 shadow-sm rounded-3 d-none d-md-block">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Mã NV</th>
+                            <th>Họ và Tên</th>
+                            <th>Phòng Ban & Vị Trí</th>
+                            <th>Số HĐ Hiện Tại</th>
+                            <th class="text-end">Lương Cơ Bản (HĐ)</th>
+                            <th class="text-end">Phụ Cấp</th>
+                            <th class="text-center">Người Phụ Thuộc</th>
+                            <th class="text-center">Trạng Thái</th>
+                            <th class="text-end pe-3">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var emp in employees)
+                        {
+                            var contract = contracts.GetValueOrDefault(emp.Id);
+                            <tr>
+                                <td class="ps-3 fw-bold text-primary">@emp.EmployeeCode</td>
+                                <td>
+                                    <div class="fw-semibold text-dark">@emp.FullName</div>
+                                    <div class="small text-muted">@emp.Email • @emp.PhoneNumber</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-secondary fw-semibold">
+                                        @(emp.Department?.DepartmentName ?? "Chưa gán")
+                                    </span>
+                                    <div class="small text-muted mt-1">@emp.Position</div>
+                                </td>
+                                <td>
+                                    @if (contract != null)
+                                    {
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="bi bi-file-earmark-text text-primary me-1"></i>@contract.ContractNumber
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger">Chưa có HĐ</span>
+                                    }
+                                </td>
+                                <td class="text-end fw-bold text-dark">
+                                    @(contract != null ? contract.BasicSalary.ToString("N0") + " đ" : "-")
+                                </td>
+                                <td class="text-end text-success fw-semibold">
+                                    @(contract != null ? contract.Allowance.ToString("N0") + " đ" : "-")
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-info-subtle text-info rounded-pill px-2">
+                                        @emp.DependentCount người
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (emp.IsActive)
+                                    {
+                                        <span class="badge bg-success-subtle text-success">Đang làm việc</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger">Đã nghỉ</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => EditEmployee(emp)">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Mobile Card View (Optimized for 390px viewport) -->
+        <div class="d-md-none">
+            @foreach (var emp in employees)
+            {
+                var contract = contracts.GetValueOrDefault(emp.Id);
+                <div class="card border-0 shadow-sm rounded-3 mb-3 p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-primary">@emp.EmployeeCode</span>
+                        <span class="badge @(emp.IsActive ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger")">
+                            @(emp.IsActive ? "Đang làm việc" : "Đã nghỉ")
+                        </span>
+                    </div>
+                    <h5 class="fw-bold mb-1">@emp.FullName</h5>
+                    <p class="small text-muted mb-2">@(emp.Department?.DepartmentName) • @emp.Position</p>
+                    
+                    <div class="bg-light p-2 rounded-2 mb-2 small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Hợp đồng:</span>
+                            <span class="fw-bold">@(contract?.ContractNumber ?? "Chưa có")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Lương cơ bản:</span>
+                            <span class="fw-bold text-primary">@(contract != null ? contract.BasicSalary.ToString("N0") + " đ" : "-")</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Phụ cấp:</span>
+                            <span class="fw-bold text-success">@(contract != null ? contract.Allowance.ToString("N0") + " đ" : "-")</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Giảm trừ: @emp.DependentCount người PT</span>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditEmployee(emp)">
+                            <i class="bi bi-pencil-square me-1"></i> Sửa
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Modal Thêm/Sửa Nhân Viên -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-3">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold">
+                        @(isEditing ? "Cập Nhật Nhân Viên" : "Thêm Nhân Viên Mới")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Mã Nhân Viên</label>
+                            <input type="text" class="form-control" @bind="currentEmp.EmployeeCode" placeholder="NV004" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Họ và Tên</label>
+                            <input type="text" class="form-control" @bind="currentEmp.FullName" placeholder="Nguyễn Văn A" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Email</label>
+                            <input type="email" class="form-control" @bind="currentEmp.Email" placeholder="a.nguyen@company.com" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Số Điện Thoại</label>
+                            <input type="text" class="form-control" @bind="currentEmp.PhoneNumber" placeholder="0901234567" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Phòng Ban</label>
+                            <select class="form-select" @bind="currentEmp.DepartmentId">
+                                @foreach (var dept in departments)
+                                {
+                                    <option value="@dept.Id">@dept.DepartmentName</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Chức Vụ</label>
+                            <input type="text" class="form-control" @bind="currentEmp.Position" placeholder="Nhân viên kinh doanh" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Số Người Phụ Thuộc</label>
+                            <input type="number" class="form-control" @bind="currentEmp.DependentCount" min="0" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Trạng Thái</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" @bind="currentEmp.IsActive" id="activeSwitch">
+                                <label class="form-check-label small" for="activeSwitch">Đang làm việc</label>
+                            </div>
+                        </div>
+
+                        <!-- Phần Hợp Đồng Lao Động -->
+                        <div class="col-12 mt-3 pt-3 border-top">
+                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-file-text me-1"></i>Thông Tin Hợp Đồng (Contract)</h6>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Số Hợp Đồng</label>
+                            <input type="text" class="form-control" @bind="currentContract.ContractNumber" placeholder="HD-2026/001" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Lương Cơ Bản (VNĐ)</label>
+                            <input type="number" class="form-control" @bind="currentContract.BasicSalary" step="500000" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Phụ Cấp (VNĐ)</label>
+                            <input type="number" class="form-control" @bind="currentContract.Allowance" step="100000" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Mức Lương Đóng BHXH</label>
+                            <input type="number" class="form-control" @bind="currentContract.InsuranceSalary" step="500000" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                    <button type="button" class="btn btn-primary fw-bold" @onclick="SaveEmployee">
+                        <i class="bi bi-save me-1"></i> Lưu Thông Tin
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Employee> employees = new();
+    private List<Department> departments = new();
+    private Dictionary<int, Contract?> contracts = new();
+    private bool isLoading = true;
+    private bool showModal = false;
+    private bool isEditing = false;
+
+    private Employee currentEmp = new();
+    private Contract currentContract = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        departments = (await DepartmentRepo.GetAllDepartmentsAsync()).ToList();
+        employees = (await EmployeeRepo.GetAllEmployeesAsync(includeInactive: true)).ToList();
+        
+        contracts.Clear();
+        foreach (var emp in employees)
+        {
+            var c = await ContractRepo.GetActiveContractByEmployeeIdAsync(emp.Id);
+            contracts[emp.Id] = c;
+        }
+        isLoading = false;
+    }
+
+    private void OpenAddModal()
+    {
+        isEditing = false;
+        currentEmp = new Employee
+        {
+            EmployeeCode = $"NV{employees.Count + 1:D3}",
+            DepartmentId = departments.FirstOrDefault()?.Id ?? 1,
+            IsActive = true,
+            JoinDate = DateTime.Today
+        };
+        currentContract = new Contract
+        {
+            ContractNumber = $"HD-2026/{employees.Count + 1:D3}",
+            BasicSalary = 15000000m,
+            Allowance = 2000000m,
+            InsuranceSalary = 15000000m,
+            IsCurrent = true,
+            StartDate = DateTime.Today
+        };
+        showModal = true;
+    }
+
+    private void EditEmployee(Employee emp)
+    {
+        isEditing = true;
+        currentEmp = new Employee
+        {
+            Id = emp.Id,
+            EmployeeCode = emp.EmployeeCode,
+            FullName = emp.FullName,
+            Email = emp.Email,
+            PhoneNumber = emp.PhoneNumber,
+            Position = emp.Position,
+            DepartmentId = emp.DepartmentId,
+            DependentCount = emp.DependentCount,
+            IsActive = emp.IsActive,
+            JoinDate = emp.JoinDate
+        };
+
+        var existingC = contracts.GetValueOrDefault(emp.Id);
+        if (existingC != null)
+        {
+            currentContract = new Contract
+            {
+                Id = existingC.Id,
+                EmployeeId = existingC.EmployeeId,
+                ContractNumber = existingC.ContractNumber,
+                BasicSalary = existingC.BasicSalary,
+                Allowance = existingC.Allowance,
+                InsuranceSalary = existingC.InsuranceSalary,
+                IsCurrent = existingC.IsCurrent,
+                StartDate = existingC.StartDate
+            };
+        }
+        else
+        {
+            currentContract = new Contract
+            {
+                EmployeeId = emp.Id,
+                ContractNumber = $"HD-2026/{emp.EmployeeCode}",
+                BasicSalary = 15000000m,
+                Allowance = 2000000m,
+                InsuranceSalary = 15000000m,
+                IsCurrent = true,
+                StartDate = DateTime.Today
+            };
+        }
+
+        showModal = true;
+    }
+
+    private async Task SaveEmployee()
+    {
+        if (isEditing)
+        {
+            await EmployeeRepo.UpdateEmployeeAsync(currentEmp);
+            currentContract.EmployeeId = currentEmp.Id;
+            if (currentContract.Id > 0)
+                await ContractRepo.UpdateContractAsync(currentContract);
+            else
+                await ContractRepo.AddContractAsync(currentContract);
+        }
+        else
+        {
+            await EmployeeRepo.AddEmployeeAsync(currentEmp);
+            currentContract.EmployeeId = currentEmp.Id;
+            await ContractRepo.AddContractAsync(currentContract);
+        }
+
+        showModal = false;
+        await LoadDataAsync();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+}
