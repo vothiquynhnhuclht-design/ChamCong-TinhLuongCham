@@ -1,0 +1,292 @@
+@page "/ai-assistant"
+@inject ExplainPayslipWithAIUseCase ExplainWithAI
+@inject IEmployeeRepository EmployeeRepo
+@inject IPayslipRepository PayslipRepo
+
+<PageTitle>Trợ Lý Nhân Sự AI - HR Copilot</PageTitle>
+
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h3 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-robot text-purple me-2"></i>Trợ Lý AI Giải Thích Phiếu Lương
+                </h3>
+                <span class="badge bg-purple-subtle text-purple border border-purple-subtle fw-semibold">
+                    Microsoft.Extensions.AI • IChatClient
+                </span>
+            </div>
+            <p class="text-muted small mb-0">
+                Tính năng mở rộng (Điểm thưởng Capstone): Tự động đối soát 2 kỳ lương liền kề và phân tích nguyên nhân biến động thu nhập cho nhân viên.
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Cột Trái: Chọn Nhân Viên & Thông Tin Phiếu Lương Đối Soát -->
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3 p-3 bg-white mb-3">
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-person-bounding-box text-primary me-2"></i>Chọn Đối Tượng Cần Phân Tích
+                </h6>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted">Nhân Viên</label>
+                    <select class="form-select" @bind="selectedEmployeeId" @bind:after="OnEmployeeChangedAsync">
+                        @foreach (var emp in employees)
+                        {
+                            <option value="@emp.Id">@emp.EmployeeCode - @emp.FullName (@emp.Position)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold text-muted">Kỳ Lương</label>
+                        <select class="form-select" @bind="selectedMonth" @bind:after="OnEmployeeChangedAsync">
+                            @for (int m = 1; m <= 12; m++)
+                            {
+                                <option value="@m">Tháng @m</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold text-muted">Năm</label>
+                        <select class="form-select" @bind="selectedYear" @bind:after="OnEmployeeChangedAsync">
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Card Tóm Tắt Phiếu Lương Hiện Tại -->
+                @if (currentPayslip != null)
+                {
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small fw-bold text-dark">Thực Nhận (Net):</span>
+                            <span class="fs-5 fw-bold text-success">@currentPayslip.NetSalary.ToString("N0") đ</span>
+                        </div>
+                        <div class="small text-muted space-y-1">
+                            <div class="d-flex justify-content-between">
+                                <span>Công thực tế:</span>
+                                <strong>@currentPayslip.ActualWorkDays / @currentPayslip.StandardWorkDays ngày</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Làm thêm giờ (OT):</span>
+                                <strong>@currentPayslip.OvertimeHours giờ</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Tổng khấu trừ:</span>
+                                <strong class="text-danger">-@currentPayslip.TotalDeductions.ToString("N0") đ</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Trạng thái sổ:</span>
+                                <span class="badge @(currentPayslip.Status == PayslipStatus.Locked ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning")">
+                                    @currentPayslip.Status
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning small mb-0">
+                        <i class="bi bi-info-circle me-1"></i> Chưa có dữ liệu bảng lương tháng @selectedMonth/@selectedYear cho nhân viên này. Bạn hãy vào mục <strong>Tính Lương</strong> để chạy tính toán trước nhé!
+                    </div>
+                }
+            </div>
+
+            <!-- Gợi Ý Câu Hỏi Nhanh (Prompt Chips) -->
+            <div class="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                <h6 class="fw-bold text-dark mb-2">
+                    <i class="bi bi-lightbulb-fill text-warning me-2"></i>Câu Hỏi Gợi Ý Cho AI
+                </h6>
+                <div class="d-flex flex-column gap-2">
+                    <button class="btn btn-outline-primary btn-sm text-start" @onclick='() => SendPromptQuick("Vì sao lương tháng này của tôi bị giảm so với tháng trước?")'>
+                        <i class="bi bi-chat-dots me-1"></i> Vì sao lương tháng này bị giảm?
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm text-start" @onclick='() => SendPromptQuick("Công thức tính lương ngày công và làm thêm giờ (OT) được áp dụng như thế nào?")'>
+                        <i class="bi bi-calculator me-1"></i> Giải thích công thức tính lương & OT
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm text-start" @onclick='() => SendPromptQuick("Giải thích chi tiết các khoản trừ BHXH 8%, BHYT 1.5%, BHTN 1% và Thuế TNCN của tôi.")'>
+                        <i class="bi bi-shield-check me-1"></i> Chi tiết các khoản trích trừ bảo hiểm & thuế
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cột Phải: Khung Chatbot Trực Quan (Interactive Chat Stream) -->
+        <div class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm rounded-3 bg-white d-flex flex-column" style="height: 600px;">
+                <!-- Chat Header -->
+                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="w-8 h-8 rounded-circle bg-purple text-white d-flex align-items-center justify-content-center fw-bold shadow-xs">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold small text-dark">HR Copilot AI Assistant</div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                <i class="bi bi-circle-fill text-success me-1" style="font-size: 8px;"></i>Sẵn sàng giải đáp thắc mắc 24/7
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ClearChat">
+                        <i class="bi bi-trash3 me-1"></i> Xóa Hội Thoại
+                    </button>
+                </div>
+
+                <!-- Chat Body (Message stream) -->
+                <div class="card-body p-3 overflow-y-auto flex-grow-1" id="chatStream">
+                    @foreach (var msg in chatHistory)
+                    {
+                        if (msg.IsUser)
+                        {
+                            <!-- User Message Bubble -->
+                            <div class="d-flex justify-content-end mb-3">
+                                <div class="bg-primary text-white p-3 rounded-3 shadow-xs" style="max-width: 80%;">
+                                    <div class="small fw-semibold mb-1"><i class="bi bi-person-fill me-1"></i>Bạn</div>
+                                    <div class="small" style="white-space: pre-wrap;">@msg.Text</div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- AI Assistant Bubble -->
+                            <div class="d-flex justify-content-start mb-3 gap-2">
+                                <div class="w-8 h-8 rounded-circle bg-purple text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0 shadow-xs" style="width: 32px; height: 32px;">
+                                    <i class="bi bi-robot" style="font-size: 14px;"></i>
+                                </div>
+                                <div class="bg-light border text-dark p-3 rounded-3 shadow-xs" style="max-width: 88%;">
+                                    <div class="small fw-bold text-purple mb-1">HR Copilot</div>
+                                    <div class="small" style="white-space: pre-wrap; line-height: 1.6;">@msg.Text</div>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (isThinking)
+                    {
+                        <div class="d-flex justify-content-start mb-3 gap-2">
+                            <div class="w-8 h-8 rounded-circle bg-purple text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 32px; height: 32px;">
+                                <i class="bi bi-robot" style="font-size: 14px;"></i>
+                            </div>
+                            <div class="bg-light border text-dark p-3 rounded-3">
+                                <div class="spinner-grow spinner-grow-sm text-purple me-2" role="status"></div>
+                                <span class="small text-muted fst-italic">HR Copilot đang phân tích đối soát dữ liệu phiếu lương...</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Chat Input Footer -->
+                <div class="card-footer bg-white border-top p-3">
+                    <form @onsubmit="SendMessageAsync" class="d-flex gap-2">
+                        <input type="text" class="form-control" 
+                               placeholder="Nhập câu hỏi của bạn về phiếu lương..." 
+                               @bind="userInput" 
+                               disabled="@isThinking" />
+                        <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-xs" disabled="@(isThinking || string.IsNullOrWhiteSpace(userInput))">
+                            <i class="bi bi-send-fill me-1"></i> Gửi
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-purple { color: #7c3aed !important; }
+    .bg-purple { background-color: #7c3aed !important; }
+    .bg-purple-subtle { background-color: #f3e8ff !important; }
+    .border-purple-subtle { border-color: #ddd6fe !important; }
+</style>
+
+@code {
+    private List<Employee> employees = new();
+    private int selectedEmployeeId = 1;
+    private int selectedMonth = 10;
+    private int selectedYear = 2026;
+    private Payslip? currentPayslip;
+
+    private string userInput = "";
+    private bool isThinking = false;
+
+    private class ChatItem
+    {
+        public bool IsUser { get; set; }
+        public string Text { get; set; } = "";
+    }
+
+    private List<ChatItem> chatHistory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        employees = (await EmployeeRepo.GetAllEmployeesAsync()).ToList();
+        if (employees.Any())
+        {
+            selectedEmployeeId = employees.First().Id;
+            await OnEmployeeChangedAsync();
+        }
+
+        // Khởi tạo lời chào ban đầu từ AI
+        chatHistory.Add(new ChatItem
+        {
+            IsUser = false,
+            Text = "Xin chào! Tôi là Trợ Lý Nhân Sự AI (HR Copilot).\n\nTôi có thể giải thích chi tiết phiếu lương, đối soát lý do biến động ngày công, tăng ca OT, và làm rõ các khoản khấu trừ BHXH, Thuế TNCN cho bạn. Hãy chọn một câu hỏi gợi ý bên trái hoặc gõ câu hỏi bất kỳ nhé!"
+        });
+    }
+
+    private async Task OnEmployeeChangedAsync()
+    {
+        currentPayslip = await PayslipRepo.GetPayslipByEmployeeAndPeriodAsync(selectedEmployeeId, selectedMonth, selectedYear);
+    }
+
+    private async Task SendPromptQuick(string promptText)
+    {
+        userInput = promptText;
+        await SendMessageAsync();
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(userInput) || isThinking) return;
+
+        var question = userInput.Trim();
+        userInput = "";
+
+        chatHistory.Add(new ChatItem { IsUser = true, Text = question });
+        isThinking = true;
+
+        try
+        {
+            var answer = await ExplainWithAI.ExecuteAsync(selectedEmployeeId, selectedMonth, selectedYear, question);
+            chatHistory.Add(new ChatItem { IsUser = false, Text = answer });
+        }
+        catch (Exception ex)
+        {
+            chatHistory.Add(new ChatItem 
+            { 
+                IsUser = false, 
+                Text = $"⚠️ Đã xảy ra lỗi khi phân tích: {ex.Message}" 
+            });
+        }
+        finally
+        {
+            isThinking = false;
+        }
+    }
+
+    private void ClearChat()
+    {
+        chatHistory.Clear();
+        chatHistory.Add(new ChatItem
+        {
+            IsUser = false,
+            Text = "Đã làm mới phiên hội thoại. Tôi sẵn sàng hỗ trợ phân tích phiếu lương mới cho bạn!"
+        });
+    }
+}

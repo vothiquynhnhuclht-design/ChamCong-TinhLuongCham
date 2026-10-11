@@ -60,6 +60,8 @@
 .icon-info { color: #38bdf8; }
 .icon-warning { color: #fbbf24; }
 .icon-success { color: #4ade80; }
+.icon-purple { color: #c084fc; }
+.bg-purple { background-color: #9333ea; }
 
 .navbar-toggler {
     display: none;
