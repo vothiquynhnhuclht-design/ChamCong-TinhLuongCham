@@ -34,8 +34,9 @@ namespace ChamCong_TinhLuong
             builder.Services.AddScoped<IDeductionRateRepository, SqlDeductionRateRepository>();
             builder.Services.AddScoped<IPayslipRepository, SqlPayslipRepository>();
 
-            // 3. Register Scoped State Management (Draft Timesheet - ShoppingCart pattern)
+            // 3. Register Scoped State Management (Draft Timesheet & User Role Session)
             builder.Services.AddScoped<AttendanceDraftService>();
+            builder.Services.AddScoped<UserSessionService>();
 
             // 4. Register UseCases
             builder.Services.AddTransient<CalculatePayrollUseCase>();

@@ -2,6 +2,8 @@
 @inject ExplainPayslipWithAIUseCase ExplainWithAI
 @inject IEmployeeRepository EmployeeRepo
 @inject IPayslipRepository PayslipRepo
+@inject UserSessionService UserSession
+@implements IDisposable
 
 <PageTitle>Trợ Lý Nhân Sự AI - HR Copilot</PageTitle>
 
@@ -32,8 +34,14 @@
                 </h6>
 
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold text-muted">Nhân Viên</label>
-                    <select class="form-select" @bind="selectedEmployeeId" @bind:after="OnEmployeeChangedAsync">
+                    <label class="form-label small fw-semibold text-muted">
+                        Nhân Viên
+                        @if (UserSession.IsEmployee)
+                        {
+                            <span class="badge bg-primary-subtle text-primary ms-1">Cá nhân của bạn</span>
+                        }
+                    </label>
+                    <select class="form-select" @bind="selectedEmployeeId" @bind:after="OnEmployeeChangedAsync" disabled="@UserSession.IsEmployee">
                         @foreach (var emp in employees)
                         {
                             <option value="@emp.Id">@emp.EmployeeCode - @emp.FullName (@emp.Position)</option>
@@ -225,12 +233,19 @@
 
     protected override async Task OnInitializedAsync()
     {
+        UserSession.OnChange += OnSessionChanged;
         employees = (await EmployeeRepo.GetAllEmployeesAsync()).ToList();
-        if (employees.Any())
+        
+        if (UserSession.IsEmployee && UserSession.CurrentEmployeeId.HasValue)
+        {
+            selectedEmployeeId = UserSession.CurrentEmployeeId.Value;
+        }
+        else if (employees.Any())
         {
             selectedEmployeeId = employees.First().Id;
-            await OnEmployeeChangedAsync();
         }
+
+        await OnEmployeeChangedAsync();
 
         // Khởi tạo lời chào ban đầu từ AI
         chatHistory.Add(new ChatItem
@@ -238,6 +253,21 @@
             IsUser = false,
             Text = "Xin chào! Tôi là Trợ Lý Nhân Sự AI (HR Copilot).\n\nTôi có thể giải thích chi tiết phiếu lương, đối soát lý do biến động ngày công, tăng ca OT, và làm rõ các khoản khấu trừ BHXH, Thuế TNCN cho bạn. Hãy chọn một câu hỏi gợi ý bên trái hoặc gõ câu hỏi bất kỳ nhé!"
         });
+    }
+
+    private async void OnSessionChanged()
+    {
+        if (UserSession.IsEmployee && UserSession.CurrentEmployeeId.HasValue)
+        {
+            selectedEmployeeId = UserSession.CurrentEmployeeId.Value;
+            await OnEmployeeChangedAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        UserSession.OnChange -= OnSessionChanged;
     }
 
     private async Task OnEmployeeChangedAsync()

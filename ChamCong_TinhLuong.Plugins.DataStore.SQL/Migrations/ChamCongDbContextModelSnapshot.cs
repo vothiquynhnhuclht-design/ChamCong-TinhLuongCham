@@ -101,6 +101,11 @@ namespace ChamCong_TinhLuong.Plugins.DataStore.SQL.Migrations
                     b.Property<decimal>("RatePercentage")
                         .HasColumnType("decimal(6,4)");
 
+                    b.Property<string>("RegulationSource")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -186,6 +191,45 @@ namespace ChamCong_TinhLuong.Plugins.DataStore.SQL.Migrations
                         .IsUnique();
 
                     b.ToTable("Employees");
+                });
+
+            modelBuilder.Entity("ChamCong_TinhLuong.CoreBusiness.Models.PayrollPeriod", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("LockedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LockedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<decimal>("StandardWorkDays")
+                        .HasColumnType("decimal(4,1)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Month", "Year")
+                        .IsUnique();
+
+                    b.ToTable("PayrollPeriods");
                 });
 
             modelBuilder.Entity("ChamCong_TinhLuong.CoreBusiness.Models.Payslip", b =>

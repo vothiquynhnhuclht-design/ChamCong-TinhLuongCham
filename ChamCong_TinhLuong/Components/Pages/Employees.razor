@@ -2,24 +2,49 @@
 @inject IEmployeeRepository EmployeeRepo
 @inject IContractRepository ContractRepo
 @inject IDepartmentRepository DepartmentRepo
+@inject UserSessionService UserSession
+@implements IDisposable
 
 <PageTitle>Quản Lý Nhân Sự & Hợp Đồng</PageTitle>
 
 <div class="container-fluid py-3">
-    <!-- Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-        <div>
-            <h3 class="fw-bold text-dark mb-1">
-                <i class="bi bi-people-fill text-primary me-2"></i>Hồ Sơ Nhân Sự & Hợp Đồng
-            </h3>
-            <p class="text-muted small mb-0">
-                Chuẩn hóa 3NF: Tách riêng bảng Hợp đồng (Contract) chứa lương cơ bản, phụ cấp và mức đóng bảo hiểm
+    @if (UserSession.IsEmployee)
+    {
+        <div class="card border-0 shadow-sm rounded-3 p-5 text-center bg-white my-4">
+            <i class="bi bi-shield-x fs-1 text-danger d-block mb-3"></i>
+            <h4 class="fw-bold text-dark">Quyền Truy Cập Bị Hạn Chế (Phân Quyền Theo Dữ Liệu)</h4>
+            <p class="text-muted">
+                Trang Quản lý Hồ sơ & Hợp đồng (CRUD Nhân viên) chỉ dành cho <strong>Kế toán / Quản trị Nhân sự</strong>.<br />
+                Tài khoản của bạn đang ở chế độ <strong>Nhân viên: @UserSession.CurrentEmployeeCode - @UserSession.CurrentEmployeeName</strong>.
             </p>
+            <div class="mt-3">
+                <a href="payroll" class="btn btn-primary me-2">
+                    <i class="bi bi-receipt me-1"></i> Xem Phiếu Lương Của Tôi
+                </a>
+                <button class="btn btn-outline-secondary" @onclick="() => UserSession.SwitchToAdminHr()">
+                    <i class="bi bi-arrow-repeat me-1"></i> Chuyển Sang Vai Trò Kế Toán
+                </button>
+            </div>
         </div>
-        <button class="btn btn-primary shadow-sm" @onclick="OpenAddModal">
-            <i class="bi bi-person-plus-fill me-1"></i> Thêm Nhân Viên Mới
-        </button>
-    </div>
+    }
+
+    @if (UserSession.IsAdminHr)
+    {
+        <div>
+            <!-- Header -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <div>
+                <h3 class="fw-bold text-dark mb-1">
+                    <i class="bi bi-people-fill text-primary me-2"></i>Hồ Sơ Nhân Sự & Hợp Đồng
+                </h3>
+                <p class="text-muted small mb-0">
+                    Chuẩn hóa 3NF: Tách riêng bảng Hợp đồng (Contract) chứa lương cơ bản, phụ cấp và mức đóng bảo hiểm
+                </p>
+            </div>
+            <button class="btn btn-primary shadow-sm" @onclick="OpenAddModal">
+                <i class="bi bi-person-plus-fill me-1"></i> Thêm Nhân Viên Mới
+            </button>
+        </div>
 
     @if (isLoading)
     {
@@ -150,7 +175,6 @@
             }
         </div>
     }
-</div>
 
 <!-- Modal Thêm/Sửa Nhân Viên -->
 @if (showModal)
@@ -238,7 +262,10 @@
             </div>
         </div>
     </div>
-}
+    }
+        </div>
+    }
+</div>
 
 @code {
     private List<Employee> employees = new();
@@ -253,7 +280,13 @@
 
     protected override async Task OnInitializedAsync()
     {
+        UserSession.OnChange += StateHasChanged;
         await LoadDataAsync();
+    }
+
+    public void Dispose()
+    {
+        UserSession.OnChange -= StateHasChanged;
     }
 
     private async Task LoadDataAsync()

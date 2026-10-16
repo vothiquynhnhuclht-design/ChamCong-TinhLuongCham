@@ -12,6 +12,7 @@ public class InMemoryDataStore
     public List<DeductionRate> DeductionRates { get; set; } = new();
     public List<TimeAttendance> TimeAttendances { get; set; } = new();
     public List<Payslip> Payslips { get; set; } = new();
+    public List<PayrollPeriod> PayrollPeriods { get; set; } = new();
 
     public InMemoryDataStore()
     {
@@ -26,14 +27,21 @@ public class InMemoryDataStore
         var mktDept = new Department { Id = 3, DepartmentCode = "MKT", DepartmentName = "Phòng Marketing & Kinh Doanh", Description = "Phát triển thị trường" };
         Departments.AddRange(new[] { itDept, hrDept, mktDept });
 
-        // 2. Seed Cấu hình Tỷ lệ trích khấu trừ (DeductionRate - Không hardcode)
+        // 2. Seed Cấu hình Tỷ lệ trích khấu trừ (DeductionRate - Không hardcode, ghi rõ nguồn quy định)
         DeductionRates.AddRange(new[]
         {
-            new DeductionRate { Id = 1, Code = "BHXH", Name = "Bảo hiểm xã hội (8%)", RatePercentage = 0.08m, ApplyOn = "InsuranceSalary", IsActive = true },
-            new DeductionRate { Id = 2, Code = "BHYT", Name = "Bảo hiểm y tế (1.5%)", RatePercentage = 0.015m, ApplyOn = "InsuranceSalary", IsActive = true },
-            new DeductionRate { Id = 3, Code = "BHTN", Name = "Bảo hiểm thất nghiệp (1%)", RatePercentage = 0.01m, ApplyOn = "InsuranceSalary", IsActive = true },
-            new DeductionRate { Id = 4, Code = "TNCN_BAN_THAN", Name = "Giảm trừ gia cảnh bản thân", FlatAmount = 11000000m, ApplyOn = "TaxableIncome", IsActive = true },
-            new DeductionRate { Id = 5, Code = "TNCN_PHU_THUOC", Name = "Giảm trừ người phụ thuộc", FlatAmount = 4400000m, ApplyOn = "TaxableIncome", IsActive = true }
+            new DeductionRate { Id = 1, Code = "BHXH", Name = "Bảo hiểm xã hội (8%)", RatePercentage = 0.08m, ApplyOn = "InsuranceSalary", IsActive = true, RegulationSource = "Luật BHXH số 58/2014/QH13, Điều 85" },
+            new DeductionRate { Id = 2, Code = "BHYT", Name = "Bảo hiểm y tế (1.5%)", RatePercentage = 0.015m, ApplyOn = "InsuranceSalary", IsActive = true, RegulationSource = "Luật BHYT số 46/2014/QH13, Điều 13" },
+            new DeductionRate { Id = 3, Code = "BHTN", Name = "Bảo hiểm thất nghiệp (1%)", RatePercentage = 0.01m, ApplyOn = "InsuranceSalary", IsActive = true, RegulationSource = "Luật Việc làm số 38/2013/QH13, Điều 57" },
+            new DeductionRate { Id = 4, Code = "TNCN_BAN_THAN", Name = "Giảm trừ gia cảnh bản thân", FlatAmount = 11000000m, ApplyOn = "TaxableIncome", IsActive = true, RegulationSource = "Nghị quyết 954/2020/UBTVQH14 (11 tr/tháng)" },
+            new DeductionRate { Id = 5, Code = "TNCN_PHU_THUOC", Name = "Giảm trừ người phụ thuộc", FlatAmount = 4400000m, ApplyOn = "TaxableIncome", IsActive = true, RegulationSource = "Nghị quyết 954/2020/UBTVQH14 (4.4 tr/tháng)" }
+        });
+
+        // 2.1. Seed Kỳ Lương (PayrollPeriod)
+        PayrollPeriods.AddRange(new[]
+        {
+            new PayrollPeriod { Id = 1, Month = 9, Year = 2026, StandardWorkDays = 22m, Status = PayslipStatus.Locked, LockedAt = new DateTime(2026, 10, 5), LockedBy = "ketoan@company.com" },
+            new PayrollPeriod { Id = 2, Month = 10, Year = 2026, StandardWorkDays = 22m, Status = PayslipStatus.Draft }
         });
 
         // 3. Seed Nhân Viên

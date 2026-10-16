@@ -17,4 +17,7 @@ public class DeductionRate
 
     public bool IsActive { get; set; } = true;
     public string? Description { get; set; }
+    
+    // Nguồn quy định pháp luật (Luật 1: nhóm ghi nguồn quy định đã dùng)
+    public string RegulationSource { get; set; } = string.Empty;
 }

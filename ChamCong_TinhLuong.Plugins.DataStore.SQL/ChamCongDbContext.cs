@@ -17,6 +17,7 @@ public class ChamCongDbContext : DbContext
     public DbSet<TimeAttendance> TimeAttendances => Set<TimeAttendance>();
     public DbSet<Payslip> Payslips => Set<Payslip>();
     public DbSet<PayslipLine> PayslipLines => Set<PayslipLine>();
+    public DbSet<PayrollPeriod> PayrollPeriods => Set<PayrollPeriod>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -64,6 +65,7 @@ public class ChamCongDbContext : DbContext
             entity.Property(r => r.RatePercentage).HasColumnType("decimal(6,4)");
             entity.Property(r => r.FlatAmount).HasColumnType("decimal(18,2)");
             entity.Property(r => r.ApplyOn).HasMaxLength(50);
+            entity.Property(r => r.RegulationSource).HasMaxLength(255);
         });
 
         // 4. TimeAttendance Configuration
@@ -111,6 +113,16 @@ public class ChamCongDbContext : DbContext
                   .WithMany(p => p.Lines)
                   .HasForeignKey(l => l.PayslipId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 7. PayrollPeriod Configuration
+        modelBuilder.Entity<PayrollPeriod>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.StandardWorkDays).HasColumnType("decimal(4,1)");
+            entity.Property(p => p.LockedBy).HasMaxLength(100);
+            entity.Property(p => p.Note).HasMaxLength(255);
+            entity.HasIndex(p => new { p.Month, p.Year }).IsUnique();
         });
     }
 }

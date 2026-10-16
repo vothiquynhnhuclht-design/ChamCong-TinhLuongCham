@@ -25,11 +25,42 @@ public static class DatabaseSeeder
         if (!await context.DeductionRates.AnyAsync())
         {
             await context.DeductionRates.AddRangeAsync(
-                new DeductionRate { Code = "BHXH", Name = "Bảo hiểm xã hội (8%)", RatePercentage = 0.08m, ApplyOn = "InsuranceSalary", IsActive = true },
-                new DeductionRate { Code = "BHYT", Name = "Bảo hiểm y tế (1.5%)", RatePercentage = 0.015m, ApplyOn = "InsuranceSalary", IsActive = true },
-                new DeductionRate { Code = "BHTN", Name = "Bảo hiểm thất nghiệp (1%)", RatePercentage = 0.01m, ApplyOn = "InsuranceSalary", IsActive = true },
-                new DeductionRate { Code = "TNCN_BAN_THAN", Name = "Giảm trừ gia cảnh bản thân", FlatAmount = 11000000m, ApplyOn = "TaxableIncome", IsActive = true },
-                new DeductionRate { Code = "TNCN_PHU_THUOC", Name = "Giảm trừ người phụ thuộc", FlatAmount = 4400000m, ApplyOn = "TaxableIncome", IsActive = true }
+                new DeductionRate { Code = "BHXH", Name = "Bảo hiểm xã hội (8%)", RatePercentage = 0.08m, ApplyOn = "InsuranceSalary", IsActive = true, RegulationSource = "Luật BHXH số 58/2014/QH13, Điều 85" },
+                new DeductionRate { Code = "BHYT", Name = "Bảo hiểm y tế (1.5%)", RatePercentage = 0.015m, ApplyOn = "InsuranceSalary", IsActive = true, RegulationSource = "Luật BHYT số 46/2014/QH13, Điều 13" },
+                new DeductionRate { Code = "BHTN", Name = "Bảo hiểm thất nghiệp (1%)", RatePercentage = 0.01m, ApplyOn = "InsuranceSalary", IsActive = true, RegulationSource = "Luật Việc làm số 38/2013/QH13, Điều 57" },
+                new DeductionRate { Code = "TNCN_BAN_THAN", Name = "Giảm trừ gia cảnh bản thân", FlatAmount = 11000000m, ApplyOn = "TaxableIncome", IsActive = true, RegulationSource = "Nghị quyết 954/2020/UBTVQH14 (11 tr/tháng)" },
+                new DeductionRate { Code = "TNCN_PHU_THUOC", Name = "Giảm trừ người phụ thuộc", FlatAmount = 4400000m, ApplyOn = "TaxableIncome", IsActive = true, RegulationSource = "Nghị quyết 954/2020/UBTVQH14 (4.4 tr/tháng)" }
+            );
+            await context.SaveChangesAsync();
+        }
+        else
+        {
+            // Cập nhật nguồn quy định nếu đã có dữ liệu trước
+            var rates = await context.DeductionRates.ToListAsync();
+            foreach (var r in rates)
+            {
+                if (string.IsNullOrEmpty(r.RegulationSource))
+                {
+                    r.RegulationSource = r.Code switch
+                    {
+                        "BHXH" => "Luật BHXH số 58/2014/QH13, Điều 85",
+                        "BHYT" => "Luật BHYT số 46/2014/QH13, Điều 13",
+                        "BHTN" => "Luật Việc làm số 38/2013/QH13, Điều 57",
+                        "TNCN_BAN_THAN" => "Nghị quyết 954/2020/UBTVQH14 (11 tr/tháng)",
+                        "TNCN_PHU_THUOC" => "Nghị quyết 954/2020/UBTVQH14 (4.4 tr/tháng)",
+                        _ => "Quy định nội bộ công ty"
+                    };
+                }
+            }
+            await context.SaveChangesAsync();
+        }
+
+        // 2.1. Seed Kỳ Lương (PayrollPeriod) nếu chưa có
+        if (!await context.PayrollPeriods.AnyAsync())
+        {
+            await context.PayrollPeriods.AddRangeAsync(
+                new PayrollPeriod { Month = 9, Year = 2026, StandardWorkDays = 22m, Status = PayslipStatus.Locked, LockedAt = new DateTime(2026, 10, 5), LockedBy = "ketoan@company.com", Note = "Kỳ lương Tháng 09/2026 đã chốt" },
+                new PayrollPeriod { Month = 10, Year = 2026, StandardWorkDays = 22m, Status = PayslipStatus.Draft, Note = "Kỳ lương Tháng 10/2026 đang xử lý" }
             );
             await context.SaveChangesAsync();
         }
