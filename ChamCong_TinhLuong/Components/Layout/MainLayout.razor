@@ -1,55 +1,68 @@
 @inherits LayoutComponentBase
 @inject UserSessionService UserSession
-@inject IEmployeeRepository EmployeeRepo
+@inject NavigationManager Navigation
 @implements IDisposable
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@if (!UserSession.IsAuthenticated)
+{
+    <!-- Khi chưa đăng nhập: Hiển thị Màn hình Đăng Nhập (Login Screen) -->
+    <ChamCong_TinhLuong.Components.Pages.Login OnLoginSuccess="StateHasChanged" />
+}
+else
+{
+    <!-- Khi đã đăng nhập: Hiển thị Giao diện Làm việc chính thức -->
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
 
-    <main>
-        <!-- Top Application Header Bar -->
-        <header class="top-row px-4 d-flex justify-content-between align-items-center bg-white border-bottom shadow-2xs">
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-light text-secondary border fw-medium px-2.5 py-1.5 d-none d-sm-inline-flex align-items-center gap-1">
-                    <i class="bi bi-shield-check text-success"></i> Clean Architecture (.NET 8)
-                </span>
-                <span class="badge bg-success-subtle text-success border border-success-subtle fw-medium px-2.5 py-1.5 d-none d-md-inline-flex align-items-center gap-1">
-                    <i class="bi bi-database-check"></i> SQL Server Connected
-                </span>
-                <span class="text-muted small d-none d-lg-inline">
-                    | Kỳ làm việc: <strong>Tháng 10/2026</strong>
-                </span>
-            </div>
-
-            <!-- Role / User Switcher (Phân quyền theo dữ liệu) -->
-            <div class="d-flex align-items-center gap-2">
-                <div class="d-flex align-items-center gap-2 bg-light p-1 px-2.5 rounded-3 border shadow-2xs">
-                    <span class="small text-muted fw-semibold d-none d-sm-inline">
-                        <i class="bi bi-person-bounding-box text-primary me-1"></i>Đang đóng vai:
+        <main>
+            <!-- Top Application Header Bar -->
+            <header class="top-row px-4 d-flex justify-content-between align-items-center bg-white border-bottom shadow-2xs">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-light text-secondary border fw-medium px-2.5 py-1.5 d-none d-sm-inline-flex align-items-center gap-1">
+                        <i class="bi bi-shield-check text-success"></i> Clean Architecture (.NET 8)
                     </span>
-                    <select class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark py-0" style="cursor: pointer; width: auto;" @onchange="OnRoleSelectionChanged">
-                        <option value="admin" selected="@(UserSession.IsAdminHr)">
-                            👑 Kế toán / Quản trị Nhân sự
-                        </option>
-                        @foreach (var emp in employees)
-                        {
-                            <option value="@emp.Id" selected="@(UserSession.IsEmployee && UserSession.CurrentEmployeeId == emp.Id)">
-                                👤 Nhân viên: @emp.EmployeeCode - @emp.FullName
-                            </option>
-                        }
-                    </select>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle fw-medium px-2.5 py-1.5 d-none d-md-inline-flex align-items-center gap-1">
+                        <i class="bi bi-database-check"></i> SQL Server Connected
+                    </span>
+                    <span class="text-muted small d-none d-lg-inline">
+                        | Kỳ làm việc: <strong>Tháng 10/2026</strong>
+                    </span>
                 </div>
-            </div>
-        </header>
 
-        <!-- Main Content Area -->
-        <article class="content px-3 px-md-4 py-3">
-            @Body
-        </article>
-    </main>
-</div>
+                <!-- Logged in Account Profile & Logout Button -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-circle @(UserSession.IsAdminHr ? "bg-primary" : "bg-success") text-white fw-bold d-flex align-items-center justify-content-center shadow-xs" style="width: 34px; height: 34px; border-radius: 50%; font-size: 12px;">
+                            @(UserSession.IsAdminHr ? "HR" : UserSession.CurrentEmployeeCode)
+                        </div>
+                        <div class="d-none d-sm-block text-end">
+                            <div class="fw-bold small text-dark lh-1">@UserSession.CurrentEmployeeName</div>
+                            <span class="badge @(UserSession.IsAdminHr ? "bg-primary-subtle text-primary border border-primary-subtle" : "bg-success-subtle text-success border border-success-subtle")" style="font-size: 10px;">
+                                <i class="bi @(UserSession.IsAdminHr ? "bi-shield-shaded" : "bi-person-check") me-1"></i>
+                                @(UserSession.IsAdminHr ? "Kế toán / HR Admin" : $"Nhân viên ({UserSession.CurrentEmployeeCode})")
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="vr d-none d-sm-block"></div>
+
+                    <!-- Nút Đăng Xuất -->
+                    <button class="btn btn-sm btn-outline-danger fw-semibold d-flex align-items-center gap-1 shadow-2xs" @onclick="HandleLogout">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span class="d-none d-sm-inline">Đăng Xuất</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <article class="content px-3 px-md-4 py-3">
+                @Body
+            </article>
+        </main>
+    </div>
+}
 
 <div id="blazor-error-ui">
     Đã xảy ra lỗi không mong muốn.
@@ -58,45 +71,15 @@
 </div>
 
 @code {
-    private List<Employee> employees = new();
-
     protected override void OnInitialized()
     {
         UserSession.OnChange += StateHasChanged;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private void HandleLogout()
     {
-        if (firstRender)
-        {
-            try
-            {
-                var list = await EmployeeRepo.GetAllEmployeesAsync();
-                employees = list.ToList();
-                StateHasChanged();
-            }
-            catch
-            {
-                // fallback
-            }
-        }
-    }
-
-    private void OnRoleSelectionChanged(ChangeEventArgs e)
-    {
-        var val = e.Value?.ToString();
-        if (val == "admin" || string.IsNullOrEmpty(val))
-        {
-            UserSession.SwitchToAdminHr();
-        }
-        else if (int.TryParse(val, out int empId))
-        {
-            var emp = employees.FirstOrDefault(x => x.Id == empId);
-            if (emp != null)
-            {
-                UserSession.SwitchToEmployee(emp);
-            }
-        }
+        UserSession.Logout();
+        Navigation.NavigateTo("/", forceLoad: false);
     }
 
     public void Dispose()

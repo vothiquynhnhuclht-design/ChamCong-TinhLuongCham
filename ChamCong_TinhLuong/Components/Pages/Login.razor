@@ -1,0 +1,169 @@
+@page "/login"
+@inject UserSessionService UserSession
+@inject NavigationManager Navigation
+
+<PageTitle>Đăng Nhập - Hệ Thống Chấm Công & Tính Lương</PageTitle>
+
+<div class="login-wrapper d-flex align-items-center justify-content-center min-vh-100 p-3" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);">
+    <div class="login-container w-100" style="max-width: 480px;">
+        
+        <!-- Brand Header Card -->
+        <div class="text-center mb-4">
+            <div class="brand-icon-box mx-auto mb-3 bg-primary text-white rounded-4 d-flex align-items-center justify-content-center shadow-lg" style="width: 58px; height: 58px;">
+                <i class="bi bi-clock-history fs-2"></i>
+            </div>
+            <h3 class="fw-bold text-white mb-1">HR & PAYROLL SYSTEM</h3>
+            <p class="text-white-50 small mb-0">Hệ Thống Quản Lý Chấm Công & Tính Lương Tự Động • Đề Tài 17</p>
+        </div>
+
+        <!-- Login Form Card -->
+        <div class="card border-0 shadow-lg rounded-4 p-4 p-sm-5 bg-white">
+            <h5 class="fw-bold text-dark mb-1">Đăng Nhập Hệ Thống</h5>
+            <p class="text-muted small mb-4">Vui lòng đăng nhập để truy cập đúng phân quyền của bạn</p>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger py-2 small d-flex align-items-center gap-2 mb-3 shadow-xs" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill fs-6"></i>
+                    <div>@errorMessage</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success py-2 small d-flex align-items-center gap-2 mb-3 shadow-xs" role="alert">
+                    <i class="bi bi-check-circle-fill fs-6"></i>
+                    <div>@successMessage</div>
+                </div>
+            }
+
+            <form @onsubmit="HandleLoginAsync">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-dark mb-1">Tên Đăng Nhập / Mã Nhân Viên</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted">
+                            <i class="bi bi-person-fill"></i>
+                        </span>
+                        <input type="text" class="form-control border-start-0 ps-0" 
+                               placeholder="Ví dụ: admin hoặc NV001" 
+                               @bind="username" 
+                               disabled="@isLoading"
+                               required />
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small fw-semibold text-dark mb-1">Mật Khẩu</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </span>
+                        <input type="password" class="form-control border-start-0 ps-0" 
+                               placeholder="Mặc định: 123456" 
+                               @bind="password" 
+                               disabled="@isLoading"
+                               required />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2.5 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>Đang xác thực...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        <span>ĐĂNG NHẬP</span>
+                    }
+                </button>
+            </form>
+
+            <!-- Quick Demo Accounts (1-Click Login) -->
+            <div class="mt-4 pt-3 border-top">
+                <div class="text-uppercase text-muted fw-bold mb-2" style="font-size: 11px; letter-spacing: 0.5px;">
+                    <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Chọn Nhanh Tài Khoản Demo (1-Click)
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm text-start py-2 d-flex align-items-center justify-content-between" @onclick='() => QuickLoginAsync("admin", "123456")'>
+                        <div>
+                            <div class="fw-bold">👑 Kế toán / Quản trị HR</div>
+                            <div class="text-muted" style="font-size: 11px;">admin / 123456 • Toàn quyền quản trị</div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-outline-success btn-sm text-start py-2 d-flex align-items-center justify-content-between" @onclick='() => QuickLoginAsync("NV001", "123456")'>
+                        <div>
+                            <div class="fw-bold">👤 Nhân viên: Nguyễn Văn An</div>
+                            <div class="text-muted" style="font-size: 11px;">NV001 / 123456 • Senior Fullstack (22 công + OT)</div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-outline-secondary btn-sm text-start py-2 d-flex align-items-center justify-content-between" @onclick='() => QuickLoginAsync("NV003", "123456")'>
+                        <div>
+                            <div class="fw-bold">👤 Nhân viên: Lê Hoàng Cường</div>
+                            <div class="text-muted" style="font-size: 11px;">NV003 / 123456 • Marketing (Nghỉ 1 ngày - Hỏi AI)</div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer Note -->
+        <div class="text-center mt-3 text-white-50 small">
+            Đồ án Capstone: Hệ thống phân quyền cấp dòng (Row-Level Security) & Bảo mật dữ liệu
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnLoginSuccess { get; set; }
+
+    private string username = "";
+    private string password = "";
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isLoading = false;
+
+    private async Task HandleLoginAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+
+        var result = await UserSession.LoginAsync(username, password);
+        if (result.Success)
+        {
+            successMessage = result.Message;
+            if (OnLoginSuccess.HasDelegate)
+            {
+                await OnLoginSuccess.InvokeAsync();
+            }
+            else
+            {
+                Navigation.NavigateTo("/");
+            }
+        }
+        else
+        {
+            errorMessage = result.Message;
+        }
+
+        isLoading = false;
+    }
+
+    private async Task QuickLoginAsync(string u, string p)
+    {
+        username = u;
+        password = p;
+        await HandleLoginAsync();
+    }
+}
