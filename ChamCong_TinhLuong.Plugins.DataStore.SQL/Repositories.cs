@@ -40,11 +40,12 @@ public class SqlUnitOfWork : IUnitOfWork
             await _transaction.DisposeAsync();
             _transaction = null;
         }
+        _context.ChangeTracker.Clear();
     }
 
-    public async Task SaveChangesAsync()
+    public async Task<int> SaveChangesAsync()
     {
-        await _context.SaveChangesAsync();
+        return await _context.SaveChangesAsync();
     }
 }
 
@@ -178,6 +179,7 @@ public class SqlAttendanceRepository : IAttendanceRepository
     public async Task<IEnumerable<TimeAttendance>> GetAttendancesByEmployeeAsync(int employeeId, int month, int year)
     {
         return await _db.TimeAttendances
+            .Include(a => a.WorkShift)
             .Where(a => a.EmployeeId == employeeId && a.WorkDate.Month == month && a.WorkDate.Year == year)
             .OrderBy(a => a.WorkDate)
             .ToListAsync();
@@ -187,8 +189,37 @@ public class SqlAttendanceRepository : IAttendanceRepository
     {
         return await _db.TimeAttendances
             .Include(a => a.Employee)
+            .Include(a => a.WorkShift)
             .Where(a => a.WorkDate.Month == month && a.WorkDate.Year == year)
             .OrderBy(a => a.WorkDate)
+            .ToListAsync();
+    }
+
+    public async Task<TimeAttendance?> GetAttendanceByIdAsync(int id)
+    {
+        return await _db.TimeAttendances
+            .Include(a => a.Employee)
+            .Include(a => a.WorkShift)
+            .FirstOrDefaultAsync(a => a.Id == id);
+    }
+
+    public async Task<TimeAttendance?> GetAttendanceByEmployeeAndDateAsync(int employeeId, DateTime workDate)
+    {
+        return await _db.TimeAttendances
+            .Include(a => a.Employee)
+            .Include(a => a.WorkShift)
+            .FirstOrDefaultAsync(a => a.EmployeeId == employeeId && a.WorkDate.Date == workDate.Date);
+    }
+
+    public async Task<IEnumerable<TimeAttendance>> GetPendingAttendancesAsync()
+    {
+        return await _db.TimeAttendances
+            .Include(a => a.Employee)
+                .ThenInclude(e => e!.Department)
+            .Include(a => a.WorkShift)
+            .Where(a => a.Status == AttendanceStatus.PendingApproval)
+            .OrderByDescending(a => a.WorkDate)
+            .ThenByDescending(a => a.CheckIn)
             .ToListAsync();
     }
 
@@ -316,5 +347,110 @@ public class SqlPayslipRepository : IPayslipRepository
             _db.Payslips.RemoveRange(existing);
             await _db.SaveChangesAsync();
         }
+    }
+}
+
+public class SqlAppUserRepository : IAppUserRepository
+{
+    private readonly ChamCongDbContext _db;
+    public SqlAppUserRepository(ChamCongDbContext db) => _db = db;
+
+    public async Task<AppUser?> GetByUsernameAsync(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier)) return null;
+        var term = identifier.Trim().ToLower();
+
+        return await _db.AppUsers
+            .Include(u => u.Employee)
+                .ThenInclude(e => e!.Department)
+            .FirstOrDefaultAsync(u => u.IsActive && 
+                (u.Username.ToLower() == term || 
+                 (u.Employee != null && (u.Employee.EmployeeCode.ToLower() == term || 
+                                         (u.Employee.Email != null && u.Employee.Email.ToLower() == term)))));
+    }
+
+    public async Task<AppUser?> GetByEmployeeIdAsync(int employeeId)
+    {
+        return await _db.AppUsers
+            .Include(u => u.Employee)
+            .FirstOrDefaultAsync(u => u.EmployeeId == employeeId);
+    }
+
+    public async Task AddUserAsync(AppUser user)
+    {
+        await _db.AppUsers.AddAsync(user);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task UpdateUserAsync(AppUser user)
+    {
+        _db.AppUsers.Update(user);
+        await _db.SaveChangesAsync();
+    }
+}
+
+public class SqlLeaveRequestRepository : ILeaveRequestRepository
+{
+    private readonly ChamCongDbContext _db;
+    public SqlLeaveRequestRepository(ChamCongDbContext db) => _db = db;
+
+    public async Task<IEnumerable<LeaveRequest>> GetApprovedLeaveRequestsByMonthAsync(int employeeId, int month, int year)
+    {
+        return await _db.LeaveRequests
+            .Where(lr => lr.EmployeeId == employeeId &&
+                         lr.Status == LeaveRequestStatus.Approved &&
+                         (lr.StartDate.Month == month && lr.StartDate.Year == year ||
+                          lr.EndDate.Month == month && lr.EndDate.Year == year))
+            .OrderBy(lr => lr.StartDate)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<LeaveRequest>> GetAllLeaveRequestsAsync(int? employeeId = null)
+    {
+        var query = _db.LeaveRequests.Include(lr => lr.Employee).AsQueryable();
+        if (employeeId.HasValue && employeeId.Value > 0)
+        {
+            query = query.Where(lr => lr.EmployeeId == employeeId.Value);
+        }
+        return await query.OrderByDescending(lr => lr.CreatedAt).ToListAsync();
+    }
+
+    public async Task<LeaveRequest?> GetByIdAsync(int id)
+    {
+        return await _db.LeaveRequests.Include(lr => lr.Employee).FirstOrDefaultAsync(lr => lr.Id == id);
+    }
+
+    public async Task AddLeaveRequestAsync(LeaveRequest request)
+    {
+        await _db.LeaveRequests.AddAsync(request);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task UpdateLeaveRequestAsync(LeaveRequest request)
+    {
+        _db.LeaveRequests.Update(request);
+        await _db.SaveChangesAsync();
+    }
+}
+
+public class SqlNotificationLogRepository : INotificationLogRepository
+{
+    private readonly ChamCongDbContext _db;
+    public SqlNotificationLogRepository(ChamCongDbContext db) => _db = db;
+
+    public async Task AddLogAsync(NotificationLog log)
+    {
+        await _db.NotificationLogs.AddAsync(log);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<IEnumerable<NotificationLog>> GetLogsByPeriodAsync(int month, int year)
+    {
+        return await _db.NotificationLogs
+            .Include(n => n.Employee)
+            .Include(n => n.Payslip)
+            .Where(n => n.SentDate.Month == month && n.SentDate.Year == year)
+            .OrderByDescending(n => n.SentDate)
+            .ToListAsync();
     }
 }

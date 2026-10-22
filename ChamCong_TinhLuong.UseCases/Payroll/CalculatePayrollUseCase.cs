@@ -13,6 +13,7 @@ public class CalculatePayrollUseCase
     private readonly IAttendanceRepository _attendanceRepo;
     private readonly IDeductionRateRepository _deductionRepo;
     private readonly IPayslipRepository _payslipRepo;
+    private readonly ILeaveRequestRepository _leaveRepo;
     private readonly IUnitOfWork _unitOfWork;
 
     public CalculatePayrollUseCase(
@@ -21,6 +22,7 @@ public class CalculatePayrollUseCase
         IAttendanceRepository attendanceRepo,
         IDeductionRateRepository deductionRepo,
         IPayslipRepository payslipRepo,
+        ILeaveRequestRepository leaveRepo,
         IUnitOfWork unitOfWork)
     {
         _employeeRepo = employeeRepo;
@@ -28,12 +30,13 @@ public class CalculatePayrollUseCase
         _attendanceRepo = attendanceRepo;
         _deductionRepo = deductionRepo;
         _payslipRepo = payslipRepo;
+        _leaveRepo = leaveRepo;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<PayrollCalculationResultDto> ExecuteAsync(int month, int year, double standardWorkDays = 22.0)
     {
-        // LUẬT NGHIỆP VỤ 2: Kiểm tra kỳ lương đã khóa sổ chưa
+        // Kiểm tra kỳ lương đã khóa sổ chưa
         bool isLocked = await _payslipRepo.IsPeriodLockedAsync(month, year);
         if (isLocked)
         {
@@ -47,7 +50,6 @@ public class CalculatePayrollUseCase
         var result = new PayrollCalculationResultDto();
         var generatedPayslips = new List<Payslip>();
 
-        // LUẬT NGHIỆP VỤ 1: Toàn bộ quá trình tính và lưu bảng lương nằm trọn trong 1 Database Transaction
         using (await _unitOfWork.BeginTransactionAsync())
         {
             try
@@ -69,10 +71,20 @@ public class CalculatePayrollUseCase
                     double actualWorkDays = empAttendances.Sum(a => a.ActualWorkDays);
                     double overtimeHours = empAttendances.Sum(a => a.OvertimeHours);
 
+                    // 1b. Tổng hợp đơn xin nghỉ phép đã được phê duyệt trong tháng
+                    var approvedLeaves = (await _leaveRepo.GetApprovedLeaveRequestsByMonthAsync(emp.Id, month, year)).ToList();
+                    double paidLeaveDays = approvedLeaves.Where(l => l.LeaveType == LeaveType.Paid).Sum(l => l.NumberOfDays);
+                    double unpaidLeaveDays = approvedLeaves.Where(l => l.LeaveType == LeaveType.Unpaid).Sum(l => l.NumberOfDays);
+
                     // 2. Tính toán Lương cơ bản theo ngày công: Lương cơ bản * Ngày công thực tế / Ngày công chuẩn
                     decimal basicSalary = contract.BasicSalary;
                     decimal workSalary = standardWorkDays > 0 
                         ? Math.Round((basicSalary / (decimal)standardWorkDays) * (decimal)actualWorkDays, 0)
+                        : 0m;
+
+                    // 2b. Tính toán Lương nghỉ phép hưởng nguyên lương (Paid Leave)
+                    decimal paidLeaveSalary = standardWorkDays > 0 && paidLeaveDays > 0
+                        ? Math.Round((basicSalary / (decimal)standardWorkDays) * (decimal)paidLeaveDays, 0)
                         : 0m;
 
                     // 3. Tính toán Lương tăng ca (OT 150%)
@@ -82,8 +94,8 @@ public class CalculatePayrollUseCase
                     // 4. Phụ cấp cố định từ hợp đồng
                     decimal allowance = contract.Allowance;
 
-                    // Tổng thu nhập (Gross Salary)
-                    decimal grossSalary = workSalary + otSalary + allowance;
+                    // Tổng thu nhập (Gross Salary bao gồm Lương thực làm + Lương phép + OT + Phụ cấp)
+                    decimal grossSalary = workSalary + paidLeaveSalary + otSalary + allowance;
 
                     // 5. Khởi tạo Header phiếu lương
                     var payslip = new Payslip
@@ -92,7 +104,7 @@ public class CalculatePayrollUseCase
                         Month = month,
                         Year = year,
                         StandardWorkDays = standardWorkDays,
-                        ActualWorkDays = actualWorkDays,
+                        ActualWorkDays = actualWorkDays + paidLeaveDays, // Tổng số ngày tính lương
                         OvertimeHours = overtimeHours,
                         BasicSalary = basicSalary,
                         Allowance = allowance,
@@ -110,6 +122,18 @@ public class CalculatePayrollUseCase
                         Amount = workSalary,
                         CalculationNote = $"({basicSalary:N0} đ / {standardWorkDays} ngày) x {actualWorkDays:N1} ngày"
                     });
+
+                    if (paidLeaveDays > 0)
+                    {
+                        payslip.Lines.Add(new PayslipLine
+                        {
+                            LineType = PayslipLineType.Earning,
+                            ItemCode = "PAID_LEAVE_SALARY",
+                            ItemName = "Lương nghỉ phép hưởng nguyên lương",
+                            Amount = paidLeaveSalary,
+                            CalculationNote = $"({basicSalary:N0} đ / {standardWorkDays} ngày) x {paidLeaveDays:N1} ngày phép duyệt"
+                        });
+                    }
 
                     if (otSalary > 0)
                     {
@@ -149,6 +173,7 @@ public class CalculatePayrollUseCase
 
                             payslip.Lines.Add(new PayslipLine
                             {
+                                DeductionRateId = rate.Id,
                                 LineType = PayslipLineType.Deduction,
                                 ItemCode = rate.Code,
                                 ItemName = rate.Name,
@@ -160,15 +185,14 @@ public class CalculatePayrollUseCase
                     }
 
                     // 8. Tính thuế TNCN (Tạm tính đơn giản theo luật: Thu nhập chịu thuế = Gross - BH - Giảm trừ bản thân 11tr - Người phụ thuộc 4.4tr)
-                    decimal selfRelief = deductionRates.FirstOrDefault(r => r.Code == "TNCN_BAN_THAN")?.FlatAmount ?? 11000000m;
+                    var selfRate = deductionRates.FirstOrDefault(r => r.Code == "TNCN_BAN_THAN");
+                    decimal selfRelief = selfRate?.FlatAmount ?? 11000000m;
                     decimal dependentRelief = (deductionRates.FirstOrDefault(r => r.Code == "TNCN_PHU_THUOC")?.FlatAmount ?? 4400000m) * emp.DependentCount;
                     
                     decimal taxableIncome = grossSalary - totalDeductions - selfRelief - dependentRelief;
                     decimal incomeTax = 0m;
                     if (taxableIncome > 0)
                     {
-                        // Bậc 1: <= 5tr -> 5%
-                        // Bậc 2: 5tr -> 10tr -> 10%
                         if (taxableIncome <= 5000000m)
                             incomeTax = Math.Round(taxableIncome * 0.05m, 0);
                         else if (taxableIncome <= 10000000m)
@@ -179,6 +203,7 @@ public class CalculatePayrollUseCase
                         totalDeductions += incomeTax;
                         payslip.Lines.Add(new PayslipLine
                         {
+                            DeductionRateId = selfRate?.Id,
                             LineType = PayslipLineType.Deduction,
                             ItemCode = "TAX_TNCN",
                             ItemName = "Thuế thu nhập cá nhân (TNCN)",

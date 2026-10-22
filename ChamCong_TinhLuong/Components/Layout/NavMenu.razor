@@ -1,123 +1,84 @@
 @inject UserSessionService UserSession
 @implements IDisposable
 
-<div class="sidebar-header px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
-    <a class="navbar-brand d-flex align-items-center gap-2 text-decoration-none text-white m-0" href="">
-        <div class="brand-icon-box bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm">
-            <i class="bi bi-clock-history fs-5"></i>
+<!-- Sidebar Brand Header -->
+<div class="sidebar-brand-wrapper px-3.5 py-3.5 d-flex align-items-center justify-content-between">
+    <a class="d-flex align-items-center gap-2.5 text-decoration-none" href="">
+        <div class="brand-badge-box d-flex align-items-center justify-content-center text-white">
+            <i class="bi bi-box-seam-fill fs-5"></i>
         </div>
-        <div>
-            <div class="fw-bold fs-6 lh-1 text-white">HR & Payroll</div>
-            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold mt-1" style="font-size: 10px;">
-                ĐỀ TÀI 17 • V1.0
-            </span>
+        <div class="d-flex flex-column">
+            <span class="brand-title">HRM Enterprise</span>
+            <span class="brand-subtitle">TechCorp SaaS</span>
         </div>
     </a>
+    <span class="badge-version">v2.5</span>
 </div>
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler d-md-none" id="sidebarToggle" />
 <label for="sidebarToggle" class="mobile-toggle-btn d-md-none">
-    <i class="bi bi-list fs-4"></i>
+    <i class="bi bi-list fs-5"></i>
 </label>
 
+<!-- Navigation Links (6 Clean Menu Items) -->
 <div class="nav-scrollable custom-scrollbar">
-    <nav class="flex-column py-3">
-        
-        <!-- Nhóm 1: TỔNG QUAN -->
-        <div class="menu-section-label px-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
-            Hệ Thống
-        </div>
-        <div class="nav-item px-2 mb-1">
-            <NavLink class="nav-link custom-nav-link" href="" Match="NavLinkMatch.All">
-                <i class="bi bi-speedometer2 me-2 fs-6 icon-primary"></i>
-                <span class="nav-text">Tổng Quan Hệ Thống</span>
+    <nav class="flex-column py-3 px-2.5">
+        <div class="nav-item mb-2">
+            <NavLink class="nav-link custom-sidebar-link" href="" Match="NavLinkMatch.All">
+                <i class="bi bi-house-door-fill nav-icon"></i>
+                <span class="nav-label">Tổng quan</span>
             </NavLink>
         </div>
 
-        @if (UserSession.IsAdminHr)
-        {
-            <!-- Nhóm 2: QUẢN TRỊ NHÂN SỰ (Chỉ Admin / Kế toán) -->
-            <div class="menu-section-label px-3 mt-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
-                Quản Lý Nhân Sự
-            </div>
-            <div class="nav-item px-2 mb-1">
-                <NavLink class="nav-link custom-nav-link" href="employees">
-                    <i class="bi bi-people-fill me-2 fs-6 icon-info"></i>
-                    <span class="nav-text">Hồ Sơ & Hợp Đồng</span>
-                </NavLink>
-            </div>
-
-            <!-- Nhóm 3: CHẤM CÔNG (Admin) -->
-            <div class="menu-section-label px-3 mt-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
-                Chấm Công & Thời Gian
-            </div>
-            <div class="nav-item px-2 mb-1">
-                <NavLink class="nav-link custom-nav-link" href="attendance">
-                    <i class="bi bi-calendar2-check-fill me-2 fs-6 icon-warning"></i>
-                    <span class="nav-text">Bảng Công Nháp (Draft)</span>
-                </NavLink>
-            </div>
-
-            <!-- Nhóm 4: TÍNH LƯƠNG (Admin) -->
-            <div class="menu-section-label px-3 mt-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
-                Tiền Lương & Khấu Trừ
-            </div>
-            <div class="nav-item px-2 mb-1">
-                <NavLink class="nav-link custom-nav-link" href="payroll">
-                    <i class="bi bi-cash-stack me-2 fs-6 icon-success"></i>
-                    <span class="nav-text">Bảng Lương & Phiếu Lương</span>
-                </NavLink>
-            </div>
-        }
-        else
-        {
-            <!-- Menu dành riêng cho Nhân viên (Row-level Security) -->
-            <div class="menu-section-label px-3 mt-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
-                Cá Nhân
-            </div>
-            <div class="nav-item px-2 mb-1">
-                <NavLink class="nav-link custom-nav-link" href="attendance">
-                    <i class="bi bi-calendar2-check-fill me-2 fs-6 icon-warning"></i>
-                    <span class="nav-text">Bảng Công Của Tôi</span>
-                </NavLink>
-            </div>
-            <div class="nav-item px-2 mb-1">
-                <NavLink class="nav-link custom-nav-link" href="payroll">
-                    <i class="bi bi-cash-stack me-2 fs-6 icon-success"></i>
-                    <span class="nav-text">Phiếu Lương Của Tôi</span>
-                </NavLink>
-            </div>
-        }
-
-        <!-- Nhóm 5: TRỢ LÝ AI (COPILOT) -->
-        <div class="menu-section-label px-3 mt-3 mb-1 text-uppercase text-white-50 fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
-            Trí Tuệ Nhân Tạo
+        <div class="nav-item mb-2">
+            <NavLink class="nav-link custom-sidebar-link" href="employees">
+                <i class="bi bi-people nav-icon"></i>
+                <span class="nav-label">Nhân sự</span>
+            </NavLink>
         </div>
-        <div class="nav-item px-2 mb-1">
-            <NavLink class="nav-link custom-nav-link" href="ai-assistant">
-                <i class="bi bi-robot me-2 fs-6 icon-purple"></i>
-                <span class="nav-text">Trợ Lý AI (Copilot)</span>
-                <span class="badge bg-purple text-white ms-auto" style="font-size: 9px;">AI</span>
+
+        <div class="nav-item mb-2">
+            <NavLink class="nav-link custom-sidebar-link" href="attendance">
+                <i class="bi bi-clock nav-icon"></i>
+                <span class="nav-label">Chấm công & Thời gian</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item mb-2">
+            <NavLink class="nav-link custom-sidebar-link" href="payroll">
+                <i class="bi bi-currency-dollar nav-icon"></i>
+                <span class="nav-label">Lương & Phúc lợi</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item mb-2">
+            <NavLink class="nav-link custom-sidebar-link" href="reports">
+                <i class="bi bi-bar-chart-line nav-icon"></i>
+                <span class="nav-label">Báo cáo</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item mb-2">
+            <NavLink class="nav-link custom-sidebar-link" href="ai-assistant">
+                <i class="bi bi-gear nav-icon"></i>
+                <span class="nav-label">Thiết lập</span>
             </NavLink>
         </div>
     </nav>
 
-    <!-- User Profile Footer in Sidebar -->
-    <div class="sidebar-footer p-3 mt-auto border-top border-secondary border-opacity-25 bg-black bg-opacity-25">
-        <div class="d-flex align-items-center gap-2">
-            <div class="avatar-circle @(UserSession.IsAdminHr ? "bg-primary" : "bg-success") text-white fw-bold d-flex align-items-center justify-content-center">
-                @(UserSession.IsAdminHr ? "HR" : "NV")
-            </div>
-            <div class="overflow-hidden">
-                <div class="text-white fw-semibold small text-truncate">
-                    @(UserSession.IsAdminHr ? "Kế toán / HR Admin" : UserSession.CurrentEmployeeName)
+    <!-- Bottom User Profile Card -->
+    <div class="sidebar-user-footer px-2.5 pb-3.5 mt-auto">
+        <a href="employees" class="sidebar-user-card p-2.5 rounded-3 d-flex align-items-center justify-content-between text-decoration-none">
+            <div class="d-flex align-items-center gap-2.5 overflow-hidden">
+                <div class="user-avatar-hr d-flex align-items-center justify-content-center text-white fw-bold">
+                    HR
                 </div>
-                <div class="text-white-50 text-truncate" style="font-size: 11px;">
-                    <i class="bi bi-circle-fill text-success me-1" style="font-size: 8px;"></i>
-                    @(UserSession.IsAdminHr ? "Toàn quyền quản trị" : $"{UserSession.CurrentEmployeeCode} • Chỉ xem của mình")
+                <div class="user-card-title text-truncate text-white fw-medium">
+                    @(UserSession.IsAdminHr ? "Quản trị viên / HR" : UserSession.CurrentEmployeeName)
                 </div>
             </div>
-        </div>
+            <i class="bi bi-chevron-right text-white-50" style="font-size: 11px;"></i>
+        </a>
     </div>
 </div>
 

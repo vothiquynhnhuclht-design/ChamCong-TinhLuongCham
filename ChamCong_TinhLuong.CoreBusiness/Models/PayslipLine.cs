@@ -14,6 +14,10 @@ public class PayslipLine
     public int PayslipId { get; set; }
     public Payslip? Payslip { get; set; }
 
+    // Foreign Key về DeductionRate (Tùy chọn, liên kết tới danh mục khấu trừ quy định)
+    public int? DeductionRateId { get; set; }
+    public DeductionRate? DeductionRate { get; set; }
+
     // Loại dòng: Earning (Thu nhập) hoặc Deduction (Khấu trừ)
     public PayslipLineType LineType { get; set; }
 

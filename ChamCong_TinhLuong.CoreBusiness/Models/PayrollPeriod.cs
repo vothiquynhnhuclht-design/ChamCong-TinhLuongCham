@@ -17,4 +17,7 @@ public class PayrollPeriod
     public DateTime? LockedAt { get; set; }
     public string? LockedBy { get; set; }
     public string? Note { get; set; }
+
+    // Relationship 1-N: 1 kỳ tính lương chứa nhiều phiếu lương của nhân viên
+    public ICollection<Payslip> Payslips { get; set; } = new List<Payslip>();
 }

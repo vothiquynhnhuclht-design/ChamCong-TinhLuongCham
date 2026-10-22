@@ -33,6 +33,9 @@ public interface IAttendanceRepository
 {
     Task<IEnumerable<TimeAttendance>> GetAttendancesByEmployeeAsync(int employeeId, int month, int year);
     Task<IEnumerable<TimeAttendance>> GetAttendancesByMonthAsync(int month, int year);
+    Task<TimeAttendance?> GetAttendanceByIdAsync(int id);
+    Task<TimeAttendance?> GetAttendanceByEmployeeAndDateAsync(int employeeId, DateTime workDate);
+    Task<IEnumerable<TimeAttendance>> GetPendingAttendancesAsync();
     Task AddAttendanceAsync(TimeAttendance attendance);
     Task AddRangeAttendanceAsync(IEnumerable<TimeAttendance> attendances);
     Task UpdateAttendanceAsync(TimeAttendance attendance);
@@ -58,10 +61,33 @@ public interface IPayslipRepository
     Task DeletePayslipsByPeriodAsync(int month, int year);
 }
 
+public interface IAppUserRepository
+{
+    Task<AppUser?> GetByUsernameAsync(string username);
+    Task<AppUser?> GetByEmployeeIdAsync(int employeeId);
+    Task AddUserAsync(AppUser user);
+    Task UpdateUserAsync(AppUser user);
+}
+
+public interface ILeaveRequestRepository
+{
+    Task<IEnumerable<LeaveRequest>> GetApprovedLeaveRequestsByMonthAsync(int employeeId, int month, int year);
+    Task<IEnumerable<LeaveRequest>> GetAllLeaveRequestsAsync(int? employeeId = null);
+    Task<LeaveRequest?> GetByIdAsync(int id);
+    Task AddLeaveRequestAsync(LeaveRequest request);
+    Task UpdateLeaveRequestAsync(LeaveRequest request);
+}
+
+public interface INotificationLogRepository
+{
+    Task AddLogAsync(NotificationLog log);
+    Task<IEnumerable<NotificationLog>> GetLogsByPeriodAsync(int month, int year);
+}
+
 public interface IUnitOfWork
 {
     Task<IDisposable> BeginTransactionAsync();
     Task CommitAsync();
     Task RollbackAsync();
-    Task SaveChangesAsync();
+    Task<int> SaveChangesAsync();
 }

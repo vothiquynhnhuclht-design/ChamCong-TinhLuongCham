@@ -10,4 +10,7 @@ public class WorkShift
     public TimeSpan BreakStartTime { get; set; } = new TimeSpan(12, 0, 0); // 12:00
     public TimeSpan BreakEndTime { get; set; } = new TimeSpan(13, 30, 0); // 13:30
     public double WorkDayFactor { get; set; } = 1.0; // 1.0 công
+
+    // Relationship 1-N: 1 ca làm việc được áp dụng cho nhiều lượt chấm công
+    public ICollection<TimeAttendance> TimeAttendances { get; set; } = new List<TimeAttendance>();
 }

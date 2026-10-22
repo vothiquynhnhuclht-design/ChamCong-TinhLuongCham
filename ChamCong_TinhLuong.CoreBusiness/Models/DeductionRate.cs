@@ -20,4 +20,7 @@ public class DeductionRate
     
     // Nguồn quy định pháp luật (Luật 1: nhóm ghi nguồn quy định đã dùng)
     public string RegulationSource { get; set; } = string.Empty;
+
+    // Relationship 1-N: 1 tỷ lệ khấu trừ có thể áp dụng cho nhiều dòng khấu trừ trong phiếu lương
+    public ICollection<PayslipLine> PayslipLines { get; set; } = new List<PayslipLine>();
 }

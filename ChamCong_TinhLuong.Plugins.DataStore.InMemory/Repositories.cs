@@ -18,7 +18,7 @@ public class InMemoryUnitOfWork : IUnitOfWork
 
     public Task CommitAsync() => Task.CompletedTask;
     public Task RollbackAsync() => Task.CompletedTask;
-    public Task SaveChangesAsync() => Task.CompletedTask;
+    public Task<int> SaveChangesAsync() => Task.FromResult(0);
 }
 
 public class InMemoryEmployeeRepository : IEmployeeRepository
@@ -152,6 +152,26 @@ public class InMemoryAttendanceRepository : IAttendanceRepository
         return Task.FromResult<IEnumerable<TimeAttendance>>(list.ToList());
     }
 
+    public Task<TimeAttendance?> GetAttendanceByIdAsync(int id)
+    {
+        var item = _db.TimeAttendances.FirstOrDefault(a => a.Id == id);
+        return Task.FromResult(item);
+    }
+
+    public Task<TimeAttendance?> GetAttendanceByEmployeeAndDateAsync(int employeeId, DateTime workDate)
+    {
+        var item = _db.TimeAttendances.FirstOrDefault(a => a.EmployeeId == employeeId && a.WorkDate.Date == workDate.Date);
+        return Task.FromResult(item);
+    }
+
+    public Task<IEnumerable<TimeAttendance>> GetPendingAttendancesAsync()
+    {
+        var list = _db.TimeAttendances
+            .Where(a => a.Status == AttendanceStatus.PendingApproval)
+            .OrderByDescending(a => a.WorkDate);
+        return Task.FromResult<IEnumerable<TimeAttendance>>(list.ToList());
+    }
+
     public Task AddAttendanceAsync(TimeAttendance attendance)
     {
         attendance.Id = _db.TimeAttendances.Any() ? _db.TimeAttendances.Max(a => a.Id) + 1 : 1;
@@ -181,6 +201,9 @@ public class InMemoryAttendanceRepository : IAttendanceRepository
             existing.LateMinutes = attendance.LateMinutes;
             existing.Status = attendance.Status;
             existing.Note = attendance.Note;
+            existing.PhotoPath = attendance.PhotoPath;
+            existing.CheckOutPhotoPath = attendance.CheckOutPhotoPath;
+            existing.WorkShiftId = attendance.WorkShiftId;
         }
         return Task.CompletedTask;
     }

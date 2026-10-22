@@ -20,6 +20,9 @@ public class Employee
     public ICollection<Contract> Contracts { get; set; } = new List<Contract>();
     public ICollection<TimeAttendance> TimeAttendances { get; set; } = new List<TimeAttendance>();
     public ICollection<Payslip> Payslips { get; set; } = new List<Payslip>();
+    public ICollection<LeaveRequest> LeaveRequests { get; set; } = new List<LeaveRequest>();
+    public ICollection<NotificationLog> NotificationLogs { get; set; } = new List<NotificationLog>();
+    public AppUser? AppUser { get; set; }
 
     // Helper method to get the current active contract
     public Contract? GetCurrentContract()

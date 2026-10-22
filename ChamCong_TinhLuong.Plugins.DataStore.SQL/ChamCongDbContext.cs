@@ -18,6 +18,9 @@ public class ChamCongDbContext : DbContext
     public DbSet<Payslip> Payslips => Set<Payslip>();
     public DbSet<PayslipLine> PayslipLines => Set<PayslipLine>();
     public DbSet<PayrollPeriod> PayrollPeriods => Set<PayrollPeriod>();
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,7 +71,15 @@ public class ChamCongDbContext : DbContext
             entity.Property(r => r.RegulationSource).HasMaxLength(255);
         });
 
-        // 4. TimeAttendance Configuration
+        // 4. WorkShift Configuration
+        modelBuilder.Entity<WorkShift>(entity =>
+        {
+            entity.HasKey(w => w.Id);
+            entity.Property(w => w.ShiftCode).IsRequired().HasMaxLength(50);
+            entity.Property(w => w.ShiftName).IsRequired().HasMaxLength(100);
+        });
+
+        // 5. TimeAttendance Configuration
         modelBuilder.Entity<TimeAttendance>(entity =>
         {
             entity.HasKey(t => t.Id);
@@ -77,10 +88,19 @@ public class ChamCongDbContext : DbContext
                   .HasForeignKey(t => t.EmployeeId)
                   .OnDelete(DeleteBehavior.Cascade);
 
+            // Nối WorkShifts 1 - N TimeAttendances
+            entity.HasOne(t => t.WorkShift)
+                  .WithMany(w => w.TimeAttendances)
+                  .HasForeignKey(t => t.WorkShiftId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(t => t.PhotoPath).HasMaxLength(500);
+            entity.Property(t => t.CheckOutPhotoPath).HasMaxLength(500);
+
             entity.HasIndex(t => new { t.EmployeeId, t.WorkDate });
         });
 
-        // 5. Payslip Header Configuration
+        // 6. Payslip Header Configuration
         modelBuilder.Entity<Payslip>(entity =>
         {
             entity.HasKey(p => p.Id);
@@ -94,12 +114,17 @@ public class ChamCongDbContext : DbContext
             entity.HasOne(p => p.Employee)
                   .WithMany(e => e.Payslips)
                   .HasForeignKey(p => p.EmployeeId)
-                  .OnDelete(DeleteBehavior.Restrict);
+                  .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasIndex(p => new { p.EmployeeId, p.Month, p.Year });
+            entity.HasOne(p => p.PayrollPeriod)
+                  .WithMany(period => period.Payslips)
+                  .HasForeignKey(p => p.PayrollPeriodId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(p => new { p.EmployeeId, p.Month, p.Year }).IsUnique();
         });
 
-        // 6. PayslipLine Detail Configuration (Header - Line)
+        // 7. PayslipLine Detail Configuration (Header - Line)
         modelBuilder.Entity<PayslipLine>(entity =>
         {
             entity.HasKey(l => l.Id);
@@ -113,9 +138,15 @@ public class ChamCongDbContext : DbContext
                   .WithMany(p => p.Lines)
                   .HasForeignKey(l => l.PayslipId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            // Nối DeductionRates 1 - N PayslipLines
+            entity.HasOne(l => l.DeductionRate)
+                  .WithMany(d => d.PayslipLines)
+                  .HasForeignKey(l => l.DeductionRateId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // 7. PayrollPeriod Configuration
+        // 8. PayrollPeriod Configuration
         modelBuilder.Entity<PayrollPeriod>(entity =>
         {
             entity.HasKey(p => p.Id);
@@ -123,6 +154,55 @@ public class ChamCongDbContext : DbContext
             entity.Property(p => p.LockedBy).HasMaxLength(100);
             entity.Property(p => p.Note).HasMaxLength(255);
             entity.HasIndex(p => new { p.Month, p.Year }).IsUnique();
+        });
+
+        // 9. AppUser Configuration (Authentication & Authorization)
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasKey(u => u.Id);
+            entity.Property(u => u.Username).IsRequired().HasMaxLength(100);
+            entity.HasIndex(u => u.Username).IsUnique();
+            entity.Property(u => u.PasswordHash).IsRequired().HasMaxLength(256);
+
+            entity.HasOne(u => u.Employee)
+                  .WithOne(e => e.AppUser)
+                  .HasForeignKey<AppUser>(u => u.EmployeeId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // 10. LeaveRequest Configuration (Đơn xin nghỉ phép)
+        modelBuilder.Entity<LeaveRequest>(entity =>
+        {
+            entity.HasKey(lr => lr.Id);
+            entity.Property(lr => lr.Reason).IsRequired().HasMaxLength(500);
+            entity.Property(lr => lr.ApprovedBy).HasMaxLength(100);
+            entity.Property(lr => lr.Note).HasMaxLength(500);
+
+            entity.HasOne(lr => lr.Employee)
+                  .WithMany(e => e.LeaveRequests)
+                  .HasForeignKey(lr => lr.EmployeeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(lr => new { lr.EmployeeId, lr.StartDate, lr.EndDate });
+        });
+
+        // 11. NotificationLog Configuration (Lịch sử gửi email/thông báo)
+        modelBuilder.Entity<NotificationLog>(entity =>
+        {
+            entity.HasKey(n => n.Id);
+            entity.Property(n => n.RecipientEmail).IsRequired().HasMaxLength(150);
+            entity.Property(n => n.Subject).IsRequired().HasMaxLength(255);
+            entity.Property(n => n.ErrorMessage).HasMaxLength(1000);
+
+            entity.HasOne(n => n.Employee)
+                  .WithMany(e => e.NotificationLogs)
+                  .HasForeignKey(n => n.EmployeeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(n => n.Payslip)
+                  .WithMany(p => p.NotificationLogs)
+                  .HasForeignKey(n => n.PayslipId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

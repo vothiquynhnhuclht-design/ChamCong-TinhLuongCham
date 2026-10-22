@@ -20,7 +20,7 @@ namespace ChamCong_TinhLuong
 
             // 1. Configure EF Core SQL Server DbContext (Sprint 2 - Week 06)
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                ?? "Server=(localdb)\\mssqllocaldb;Database=ChamCong_TinhLuong_DB;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
+                ?? "Server=localhost;Database=ChamCong_TinhLuong_DB;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
 
             builder.Services.AddDbContext<ChamCongDbContext>(options =>
                 options.UseSqlServer(connectionString));
@@ -33,6 +33,9 @@ namespace ChamCong_TinhLuong
             builder.Services.AddScoped<IAttendanceRepository, SqlAttendanceRepository>();
             builder.Services.AddScoped<IDeductionRateRepository, SqlDeductionRateRepository>();
             builder.Services.AddScoped<IPayslipRepository, SqlPayslipRepository>();
+            builder.Services.AddScoped<IAppUserRepository, SqlAppUserRepository>();
+            builder.Services.AddScoped<ILeaveRequestRepository, SqlLeaveRequestRepository>();
+            builder.Services.AddScoped<INotificationLogRepository, SqlNotificationLogRepository>();
 
             // 3. Register Scoped State Management (Draft Timesheet & User Role Session)
             builder.Services.AddScoped<AttendanceDraftService>();

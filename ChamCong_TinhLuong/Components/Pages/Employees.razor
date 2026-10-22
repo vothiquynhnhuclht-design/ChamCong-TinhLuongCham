@@ -11,18 +11,18 @@
     @if (UserSession.IsEmployee)
     {
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center bg-white my-4">
-            <i class="bi bi-shield-x fs-1 text-danger d-block mb-3"></i>
-            <h4 class="fw-bold text-dark">Quyền Truy Cập Bị Hạn Chế (Phân Quyền Theo Dữ Liệu)</h4>
+            <i class="bi bi-shield-lock fs-1 text-secondary d-block mb-3"></i>
+            <h4 class="fw-bold text-dark">Khu Vực Dành Cho Quản Trị Viên</h4>
             <p class="text-muted">
-                Trang Quản lý Hồ sơ & Hợp đồng (CRUD Nhân viên) chỉ dành cho <strong>Kế toán / Quản trị Nhân sự</strong>.<br />
-                Tài khoản của bạn đang ở chế độ <strong>Nhân viên: @UserSession.CurrentEmployeeCode - @UserSession.CurrentEmployeeName</strong>.
+                Trang Quản lý Hồ sơ & Hợp đồng chỉ dành cho tài khoản <strong>Quản trị / Bộ phận Nhân sự</strong>.<br />
+                Tài khoản của bạn hiện tại là <strong>@UserSession.CurrentEmployeeCode - @UserSession.CurrentEmployeeName</strong>.
             </p>
             <div class="mt-3">
                 <a href="payroll" class="btn btn-primary me-2">
                     <i class="bi bi-receipt me-1"></i> Xem Phiếu Lương Của Tôi
                 </a>
                 <button class="btn btn-outline-danger" @onclick="() => UserSession.Logout()">
-                    <i class="bi bi-box-arrow-right me-1"></i> Đăng Xuất Tài Khoản
+                    <i class="bi bi-box-arrow-right me-1"></i> Đăng Xuất
                 </button>
             </div>
         </div>
@@ -31,14 +31,13 @@
     @if (UserSession.IsAdminHr)
     {
         <div>
-            <!-- Header -->
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
             <div>
                 <h3 class="fw-bold text-dark mb-1">
                     <i class="bi bi-people-fill text-primary me-2"></i>Hồ Sơ Nhân Sự & Hợp Đồng
                 </h3>
                 <p class="text-muted small mb-0">
-                    Chuẩn hóa 3NF: Tách riêng bảng Hợp đồng (Contract) chứa lương cơ bản, phụ cấp và mức đóng bảo hiểm
+                    Quản lý danh sách nhân viên, cơ cấu phòng ban và hợp đồng lao động doanh nghiệp
                 </p>
             </div>
             <button class="btn btn-primary shadow-sm" @onclick="OpenAddModal">
@@ -57,7 +56,6 @@
     }
     else
     {
-        <!-- Desktop Table View (Hidden on mobile < 576px) -->
         <div class="card border-0 shadow-sm rounded-3 d-none d-md-block">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -135,7 +133,6 @@
             </div>
         </div>
 
-        <!-- Mobile Card View (Optimized for 390px viewport) -->
         <div class="d-md-none">
             @foreach (var emp in employees)
             {
@@ -176,7 +173,6 @@
         </div>
     }
 
-<!-- Modal Thêm/Sửa Nhân Viên -->
 @if (showModal)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
@@ -231,9 +227,8 @@
                             </div>
                         </div>
 
-                        <!-- Phần Hợp Đồng Lao Động -->
                         <div class="col-12 mt-3 pt-3 border-top">
-                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-file-text me-1"></i>Thông Tin Hợp Đồng (Contract)</h6>
+                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-file-text me-1"></i>Hợp Đồng Lao Động</h6>
                         </div>
                         <div class="col-6">
                             <label class="form-label small fw-semibold">Số Hợp Đồng</label>

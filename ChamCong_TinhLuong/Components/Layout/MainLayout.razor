@@ -5,58 +5,61 @@
 
 @if (!UserSession.IsAuthenticated)
 {
-    <!-- Khi chưa đăng nhập: Hiển thị Màn hình Đăng Nhập (Login Screen) -->
-    <ChamCong_TinhLuong.Components.Pages.Login OnLoginSuccess="StateHasChanged" />
+    <ChamCong_TinhLuong.Components.Pages.Login OnLoginSuccess="OnLoginSuccessHandler" />
 }
 else
 {
-    <!-- Khi đã đăng nhập: Hiển thị Giao diện Làm việc chính thức -->
     <div class="page">
+        <!-- Sidebar Navigation -->
         <div class="sidebar">
             <NavMenu />
         </div>
 
         <main>
-            <!-- Top Application Header Bar -->
-            <header class="top-row px-4 d-flex justify-content-between align-items-center bg-white border-bottom shadow-2xs">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-light text-secondary border fw-medium px-2.5 py-1.5 d-none d-sm-inline-flex align-items-center gap-1">
-                        <i class="bi bi-shield-check text-success"></i> Clean Architecture (.NET 8)
-                    </span>
-                    <span class="badge bg-success-subtle text-success border border-success-subtle fw-medium px-2.5 py-1.5 d-none d-md-inline-flex align-items-center gap-1">
-                        <i class="bi bi-database-check"></i> SQL Server Connected
-                    </span>
-                    <span class="text-muted small d-none d-lg-inline">
-                        | Kỳ làm việc: <strong>Tháng 10/2026</strong>
-                    </span>
+            <!-- Top Navigation Bar -->
+            <header class="top-row px-4 d-flex justify-content-between align-items-center bg-white border-bottom">
+                <!-- Left: Hamburger + Search Input -->
+                <div class="d-flex align-items-center gap-3 flex-grow-1" style="max-width: 550px;">
+                    <button class="btn btn-link text-slate-600 p-0 me-1" id="mobileMenuBtn" style="text-decoration: none;">
+                        <i class="bi bi-list fs-4"></i>
+                    </button>
+                    <!-- Global Search Pill -->
+                    <div class="search-input-wrapper position-relative w-100">
+                        <i class="bi bi-search search-icon text-slate-400"></i>
+                        <input type="text" class="form-control search-input" placeholder="Tìm kiếm nhân viên, hợp đồng..." />
+                    </div>
                 </div>
 
-                <!-- Logged in Account Profile & Logout Button -->
-                <div class="d-flex align-items-center gap-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-circle @(UserSession.IsAdminHr ? "bg-primary" : "bg-success") text-white fw-bold d-flex align-items-center justify-content-center shadow-xs" style="width: 34px; height: 34px; border-radius: 50%; font-size: 12px;">
-                            @(UserSession.IsAdminHr ? "HR" : UserSession.CurrentEmployeeCode)
+                <!-- Right Side Profile & Actions -->
+                <div class="d-flex align-items-center gap-3 ms-3">
+                    <!-- Theme Toggle -->
+                    <button class="btn btn-icon-round text-slate-600" title="Chế độ giao diện">
+                        <i class="bi bi-brightness-high fs-5"></i>
+                    </button>
+
+                    <!-- User Profile Info -->
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div class="user-avatar-circle shadow-xs">
+                            <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80" alt="Avatar" class="avatar-img" onerror="this.src='https://ui-avatars.com/api/?name=Vo+Thi+Quynh+Nhu&background=0D8ABC&color=fff';" />
                         </div>
-                        <div class="d-none d-sm-block text-end">
-                            <div class="fw-bold small text-dark lh-1">@UserSession.CurrentEmployeeName</div>
-                            <span class="badge @(UserSession.IsAdminHr ? "bg-primary-subtle text-primary border border-primary-subtle" : "bg-success-subtle text-success border border-success-subtle")" style="font-size: 10px;">
-                                <i class="bi @(UserSession.IsAdminHr ? "bi-shield-shaded" : "bi-person-check") me-1"></i>
-                                @(UserSession.IsAdminHr ? "Kế toán / HR Admin" : $"Nhân viên ({UserSession.CurrentEmployeeCode})")
+                        <div class="d-none d-sm-block text-start lh-sm">
+                            <div class="fw-bold text-slate-900 user-display-name">
+                                @(string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Võ Thị Quỳnh Như" : UserSession.CurrentEmployeeName)
+                            </div>
+                            <span class="text-slate-400 user-display-role">
+                                @(UserSession.IsAdminHr ? "Quản trị viên / HR" : $"Nhân sự ({UserSession.CurrentEmployeeCode})")
                             </span>
                         </div>
                     </div>
 
-                    <div class="vr d-none d-sm-block"></div>
-
-                    <!-- Nút Đăng Xuất -->
-                    <button class="btn btn-sm btn-outline-danger fw-semibold d-flex align-items-center gap-1 shadow-2xs" @onclick="HandleLogout">
-                        <i class="bi bi-box-arrow-right"></i>
-                        <span class="d-none d-sm-inline">Đăng Xuất</span>
+                    <!-- Quick Logout Button -->
+                    <button class="btn btn-link text-slate-400 hover-slate-800 p-1 ms-1" title="Đăng xuất" @onclick="HandleLogout">
+                        <i class="bi bi-box-arrow-right fs-5"></i>
                     </button>
                 </div>
             </header>
 
-            <!-- Main Content Area -->
+            <!-- Main Dynamic Workspace Content -->
             <article class="content px-3 px-md-4 py-3">
                 @Body
             </article>
@@ -74,6 +77,15 @@ else
     protected override void OnInitialized()
     {
         UserSession.OnChange += StateHasChanged;
+    }
+
+    private void OnLoginSuccessHandler()
+    {
+        StateHasChanged();
+        if (Navigation.Uri.Contains("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/", forceLoad: false);
+        }
     }
 
     private void HandleLogout()

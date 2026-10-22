@@ -10,11 +10,15 @@ public class Payslip
 {
     public int Id { get; set; }
 
-    // Foreign Key
+    // Foreign Key về Employee
     public int EmployeeId { get; set; }
     public Employee? Employee { get; set; }
 
-    // Kỳ tính lương
+    // Foreign Key về PayrollPeriod (Kỳ tính lương)
+    public int? PayrollPeriodId { get; set; }
+    public PayrollPeriod? PayrollPeriod { get; set; }
+
+    // Kỳ tính lương (Lưu trực tiếp để tối ưu truy vấn)
     public int Month { get; set; }
     public int Year { get; set; }
 
@@ -40,4 +44,7 @@ public class Payslip
 
     // Chi tiết Header-Line (tương đương OrderLineItem)
     public ICollection<PayslipLine> Lines { get; set; } = new List<PayslipLine>();
+
+    // Nhật ký thông báo phân phối phiếu lương
+    public ICollection<NotificationLog> NotificationLogs { get; set; } = new List<NotificationLog>();
 }

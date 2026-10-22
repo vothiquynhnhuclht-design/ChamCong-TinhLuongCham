@@ -4,6 +4,7 @@ namespace ChamCong_TinhLuong.UseCases.DTOs;
 
 public class AttendanceDraftItemDto
 {
+    public int Id { get; set; }
     public int EmployeeId { get; set; }
     public string EmployeeCode { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
@@ -16,6 +17,10 @@ public class AttendanceDraftItemDto
     public int LateMinutes { get; set; } = 0;
     public AttendanceStatus Status { get; set; } = AttendanceStatus.Present;
     public string? Note { get; set; }
+    public string? PhotoPath { get; set; }
+    public string? CheckOutPhotoPath { get; set; }
+    public int? WorkShiftId { get; set; }
+    public string? ShiftName { get; set; }
 }
 
 public class MonthlyAttendanceSummaryDto

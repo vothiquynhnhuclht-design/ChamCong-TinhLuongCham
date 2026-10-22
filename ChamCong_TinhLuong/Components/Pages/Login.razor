@@ -2,71 +2,78 @@
 @inject UserSessionService UserSession
 @inject NavigationManager Navigation
 
-<PageTitle>Đăng Nhập - Hệ Thống Chấm Công & Tính Lương</PageTitle>
+<PageTitle>Đăng Nhập - Hệ Thống Quản Lý Nhân Sự & Tiền Lương</PageTitle>
 
-<div class="login-wrapper d-flex align-items-center justify-content-center min-vh-100 p-3" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);">
-    <div class="login-container w-100" style="max-width: 480px;">
+<div class="d-flex align-items-center justify-content-center min-vh-100 p-3" style="background-color: #f1f5f9;">
+    <div class="w-100" style="max-width: 420px;">
         
-        <!-- Brand Header Card -->
         <div class="text-center mb-4">
-            <div class="brand-icon-box mx-auto mb-3 bg-primary text-white rounded-4 d-flex align-items-center justify-content-center shadow-lg" style="width: 58px; height: 58px;">
-                <i class="bi bi-clock-history fs-2"></i>
+            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-3 shadow-sm mb-2" style="width: 48px; height: 48px;">
+                <i class="bi bi-clock-history fs-3"></i>
             </div>
-            <h3 class="fw-bold text-white mb-1">HR & PAYROLL SYSTEM</h3>
-            <p class="text-white-50 small mb-0">Hệ Thống Quản Lý Chấm Công & Tính Lương Tự Động • Đề Tài 17</p>
+            <h4 class="fw-bold text-dark mb-1">HRM & Payroll</h4>
+            <p class="text-muted small mb-0">Hệ Thống Quản Trị Nhân Sự & Tiền Lương Doanh Nghiệp</p>
         </div>
 
-        <!-- Login Form Card -->
-        <div class="card border-0 shadow-lg rounded-4 p-4 p-sm-5 bg-white">
-            <h5 class="fw-bold text-dark mb-1">Đăng Nhập Hệ Thống</h5>
-            <p class="text-muted small mb-4">Vui lòng đăng nhập để truy cập đúng phân quyền của bạn</p>
+        <div class="card border-0 shadow-sm rounded-4 p-4 p-sm-4 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                <span class="fw-bold text-dark fs-6">Đăng Nhập</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">Bản quyền 2026</span>
+            </div>
 
             @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <div class="alert alert-danger py-2 small d-flex align-items-center gap-2 mb-3 shadow-xs" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill fs-6"></i>
+                <div class="alert alert-danger py-2 px-3 small d-flex align-items-center gap-2 mb-3 rounded-3" role="alert">
+                    <i class="bi bi-exclamation-circle-fill text-danger flex-shrink-0"></i>
                     <div>@errorMessage</div>
                 </div>
             }
 
             @if (!string.IsNullOrEmpty(successMessage))
             {
-                <div class="alert alert-success py-2 small d-flex align-items-center gap-2 mb-3 shadow-xs" role="alert">
-                    <i class="bi bi-check-circle-fill fs-6"></i>
+                <div class="alert alert-success py-2 px-3 small d-flex align-items-center gap-2 mb-3 rounded-3" role="alert">
+                    <i class="bi bi-check-circle-fill text-success flex-shrink-0"></i>
                     <div>@successMessage</div>
                 </div>
             }
 
             <form @onsubmit="HandleLoginAsync">
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold text-dark mb-1">Tên Đăng Nhập / Mã Nhân Viên</label>
+                    <label class="form-label small fw-semibold text-secondary mb-1">Tài khoản</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0 text-muted">
-                            <i class="bi bi-person-fill"></i>
+                            <i class="bi bi-person"></i>
                         </span>
-                        <input type="text" class="form-control border-start-0 ps-0" 
-                               placeholder="Ví dụ: admin hoặc NV001" 
+                        <input type="text" class="form-control border-start-0" 
+                               placeholder="Tên đăng nhập hoặc mã nhân viên" 
                                @bind="username" 
                                disabled="@isLoading"
+                               autocomplete="username"
                                required />
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <label class="form-label small fw-semibold text-dark mb-1">Mật Khẩu</label>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small fw-semibold text-secondary mb-0">Mật khẩu</label>
+                        <span class="text-muted" style="font-size: 11px;">Mặc định: 123456</span>
+                    </div>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0 text-muted">
-                            <i class="bi bi-shield-lock-fill"></i>
+                            <i class="bi bi-shield-lock"></i>
                         </span>
-                        <input type="password" class="form-control border-start-0 ps-0" 
-                               placeholder="Mặc định: 123456" 
+                        <input type="@(showPassword ? "text" : "password")" class="form-control border-start-0 border-end-0" 
+                               placeholder="Nhập mật khẩu" 
                                @bind="password" 
                                disabled="@isLoading"
-                               required />
+                               autocomplete="current-password" />
+                        <button type="button" class="btn btn-light border border-start-0 text-muted" @onclick="TogglePasswordVisibility" tabindex="-1">
+                            <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                        </button>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 py-2.5 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" disabled="@isLoading">
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 shadow-xs d-flex align-items-center justify-content-center gap-2 mt-4" disabled="@isLoading">
                     @if (isLoading)
                     {
                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -75,49 +82,37 @@
                     else
                     {
                         <i class="bi bi-box-arrow-in-right"></i>
-                        <span>ĐĂNG NHẬP</span>
+                        <span>Đăng Nhập</span>
                     }
                 </button>
             </form>
 
-            <!-- Quick Demo Accounts (1-Click Login) -->
             <div class="mt-4 pt-3 border-top">
-                <div class="text-uppercase text-muted fw-bold mb-2" style="font-size: 11px; letter-spacing: 0.5px;">
-                    <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Chọn Nhanh Tài Khoản Demo (1-Click)
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-secondary small fw-semibold" style="font-size: 11px;">
+                        <i class="bi bi-lightning-charge-fill text-warning me-1"></i>Tài khoản đăng nhập nhanh:
+                    </span>
                 </div>
 
-                <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-outline-primary btn-sm text-start py-2 d-flex align-items-center justify-content-between" @onclick='() => QuickLoginAsync("admin", "123456")'>
-                        <div>
-                            <div class="fw-bold">👑 Kế toán / Quản trị HR</div>
-                            <div class="text-muted" style="font-size: 11px;">admin / 123456 • Toàn quyền quản trị</div>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted"></i>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-2.5 py-1 text-nowrap" @onclick='() => QuickLoginAsync("admin", "123456")'>
+                        👑 Quản trị viên (admin)
                     </button>
-
-                    <button type="button" class="btn btn-outline-success btn-sm text-start py-2 d-flex align-items-center justify-content-between" @onclick='() => QuickLoginAsync("NV001", "123456")'>
-                        <div>
-                            <div class="fw-bold">👤 Nhân viên: Nguyễn Văn An</div>
-                            <div class="text-muted" style="font-size: 11px;">NV001 / 123456 • Senior Fullstack (22 công + OT)</div>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted"></i>
+                    <button type="button" class="btn btn-outline-info btn-sm rounded-pill px-2.5 py-1 text-nowrap" @onclick='() => QuickLoginAsync("ketoan", "123456")'>
+                        📊 Kế toán (ketoan)
                     </button>
-
-                    <button type="button" class="btn btn-outline-secondary btn-sm text-start py-2 d-flex align-items-center justify-content-between" @onclick='() => QuickLoginAsync("NV003", "123456")'>
-                        <div>
-                            <div class="fw-bold">👤 Nhân viên: Lê Hoàng Cường</div>
-                            <div class="text-muted" style="font-size: 11px;">NV003 / 123456 • Marketing (Nghỉ 1 ngày - Hỏi AI)</div>
-                        </div>
-                        <i class="bi bi-chevron-right text-muted"></i>
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 py-1 text-nowrap" @onclick='() => QuickLoginAsync("NV001", "123456")'>
+                        👤 NV001 (Nguyễn Văn An)
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-2.5 py-1 text-nowrap" @onclick='() => QuickLoginAsync("NV004", "123456")'>
+                        👤 NV004 (Võ Quỳnh Như)
                     </button>
                 </div>
             </div>
-
         </div>
 
-        <!-- Footer Note -->
-        <div class="text-center mt-3 text-white-50 small">
-            Đồ án Capstone: Hệ thống phân quyền cấp dòng (Row-Level Security) & Bảo mật dữ liệu
+        <div class="text-center mt-3 text-muted" style="font-size: 12px;">
+            Hệ thống Quản lý Nhân sự & Tiền lương Doanh nghiệp
         </div>
 
     </div>
@@ -127,11 +122,25 @@
     [Parameter]
     public EventCallback OnLoginSuccess { get; set; }
 
-    private string username = "";
-    private string password = "";
+    private string username = "admin";
+    private string password = "123456";
     private string? errorMessage;
     private string? successMessage;
     private bool isLoading = false;
+    private bool showPassword = false;
+
+    protected override void OnInitialized()
+    {
+        if (UserSession.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/", forceLoad: false);
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
 
     private async Task HandleLoginAsync()
     {
@@ -139,25 +148,32 @@
         errorMessage = null;
         successMessage = null;
 
-        var result = await UserSession.LoginAsync(username, password);
-        if (result.Success)
+        try
         {
-            successMessage = result.Message;
-            if (OnLoginSuccess.HasDelegate)
+            var pwd = string.IsNullOrWhiteSpace(password) ? "123456" : password;
+            var result = await UserSession.LoginAsync(username, pwd);
+            if (result.Success)
             {
-                await OnLoginSuccess.InvokeAsync();
+                successMessage = result.Message;
+                if (OnLoginSuccess.HasDelegate)
+                {
+                    await OnLoginSuccess.InvokeAsync();
+                }
+                Navigation.NavigateTo("/", forceLoad: false);
             }
             else
             {
-                Navigation.NavigateTo("/");
+                errorMessage = result.Message;
             }
         }
-        else
+        catch (Exception ex)
         {
-            errorMessage = result.Message;
+            errorMessage = $"Lỗi đăng nhập: {ex.Message}";
         }
-
-        isLoading = false;
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task QuickLoginAsync(string u, string p)

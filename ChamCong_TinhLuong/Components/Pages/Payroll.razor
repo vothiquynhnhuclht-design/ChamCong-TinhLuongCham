@@ -7,17 +7,16 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
-<PageTitle>Quản Lý Tính Lương & Phiếu Lương</PageTitle>
+<PageTitle>Quản Lý Tính Lương & Phiếu Lương - HRM Enterprise</PageTitle>
 
 <div class="container-fluid py-3">
-    <!-- Header -->
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h3 class="fw-bold text-dark mb-1">
-                <i class="bi bi-cash-stack text-success me-2"></i>Tính Lương & Phiếu Lương (Header - Line)
+                <i class="bi bi-cash-stack text-success me-2"></i>Bảng Lương & Phiếu Lương Doanh Nghiệp
             </h3>
             <p class="text-muted small mb-0">
-                Tuân thủ 2 Luật Nghiệp vụ: Động cơ tính lương trong Database Transaction & Khóa sổ (Locked) bảo mật cấp dòng
+                Tính toán chi trả thu nhập theo hợp đồng lao động, chấm công thực tế, bảo hiểm bắt buộc và thuế TNCN.
             </p>
         </div>
 
@@ -44,15 +43,12 @@
         </div>
     </div>
 
-    <!-- User Role Context Banner -->
     @if (UserSession.IsEmployee)
     {
-        <div class="alert alert-info border-info d-flex align-items-center gap-2 py-2 mb-3 shadow-2xs">
-            <i class="bi bi-shield-lock-fill fs-5 text-primary"></i>
+        <div class="alert alert-light border d-flex align-items-center gap-2 py-2 mb-3 shadow-2xs">
+            <i class="bi bi-info-circle-fill fs-5 text-primary"></i>
             <div>
-                <strong>Chế độ Phân quyền theo Dữ liệu (Row-Level Security):</strong> Bạn đang đăng nhập với tư cách nhân viên 
-                <span class="badge bg-primary">@UserSession.CurrentEmployeeCode - @UserSession.CurrentEmployeeName</span>. 
-                Hệ thống chỉ hiển thị phiếu lương của chính bạn, ngăn chặn hoàn toàn việc xem trộm dữ liệu lương người khác (Luật 2).
+                Đang hiển thị phiếu lương của: <strong>@UserSession.CurrentEmployeeName (@UserSession.CurrentEmployeeCode)</strong>. Mọi thắc mắc về chi tiết bảng lương, vui lòng liên hệ phòng Kế toán / Nhân sự.
             </div>
         </div>
     }
@@ -178,7 +174,7 @@
                 <h5>Chưa có dữ liệu tính lương cho Kỳ Tháng @selectedMonth/@selectedYear</h5>
                 @if (UserSession.IsAdminHr)
                 {
-                    <p class="small text-secondary mb-3">Vui lòng bấm nút "Tính Lương Hàng Loạt" phía trên để chạy thuật toán tính lương trong Transaction.</p>
+                    <p class="small text-secondary mb-3">Vui lòng bấm nút "Tính Lương Hàng Loạt" phía trên để tổng hợp bảng lương cho toàn thể nhân viên.</p>
                     <button class="btn btn-primary" @onclick="ExecutePayrollCalculationAsync">
                         <i class="bi bi-play-circle-fill me-1"></i> Bắt Đầu Tính Lương Ngay
                     </button>
@@ -261,7 +257,6 @@
     </div>
 </div>
 
-<!-- Modal Header - Line Payslip Detail -->
 @if (selectedPayslip != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
@@ -270,9 +265,9 @@
                 <div class="modal-header bg-dark text-white">
                     <div>
                         <h5 class="modal-title fw-bold mb-0">
-                            <i class="bi bi-receipt text-warning me-2"></i>PHIẾU LƯƠNG CHI TIẾT (PAYSLIP)
+                            <i class="bi bi-receipt text-warning me-2"></i>Phiếu Lương Chi Tiết
                         </h5>
-                        <div class="small text-white-50">Kỳ lương: Tháng @selectedPayslip.Month/@selectedPayslip.Year • Trạng thái: @selectedPayslip.Status</div>
+                        <div class="small text-white-50">Kỳ lương: Tháng @selectedPayslip.Month/@selectedPayslip.Year • Trạng thái: @(selectedPayslip.Status == PayslipStatus.Locked ? "Đã khóa sổ" : "Bản nháp")</div>
                     </div>
                     <button type="button" class="btn-close btn-close-white" @onclick="() => selectedPayslip = null"></button>
                 </div>
@@ -307,10 +302,9 @@
                         </div>
                     </div>
 
-                    <!-- Line Items Breakdown (PayslipLine) -->
                     <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-white mb-3">
                         <div class="card-header bg-white fw-bold py-2 border-bottom">
-                            <i class="bi bi-list-columns-reverse me-1 text-primary"></i> Chi Tiết Các Khoản Thu Nhập & Khấu Trừ (Header - Line)
+                            <i class="bi bi-list-columns-reverse me-1 text-primary"></i> Bảng Kê Chi Tiết Thu Nhập & Các Khoản Khấu Trừ
                         </div>
                         <div class="table-responsive">
                             <table class="table table-sm table-striped align-middle mb-0 text-sm">
@@ -318,7 +312,7 @@
                                     <tr class="table-light">
                                         <th class="ps-3">Khoản Mục</th>
                                         <th>Loại</th>
-                                        <th>Công Thức / Nguồn Quy Định Pháp Luật</th>
+                                        <th>Căn Cứ / Ghi Chú Tính Toán</th>
                                         <th class="text-end pe-3">Số Tiền</th>
                                     </tr>
                                 </thead>
@@ -434,7 +428,7 @@
         }
         catch (PayslipLockedException ex)
         {
-            errorMessage = $"[Luật Nghiệp vụ 2 Chặn]: {ex.Message}";
+            errorMessage = $"Kỳ lương đã khóa sổ: {ex.Message}";
         }
         catch (Exception ex)
         {
@@ -452,7 +446,7 @@
         {
             await LockPayroll.ExecuteAsync(selectedMonth, selectedYear, "Admin HR");
             isLocked = true;
-            successMessage = $"🔒 [Luật Nghiệp vụ 2]: Kỳ lương tháng {selectedMonth}/{selectedYear} đã được KHÓA SỔ thành công! Mọi thao tác tính lại hoặc sửa đổi đã bị vô hiệu hóa.";
+            successMessage = $"Kỳ lương tháng {selectedMonth}/{selectedYear} đã được khóa sổ thành công. Dữ liệu đã chuyển sang trạng thái chính thức.";
             await LoadPayslipsAsync();
         }
         catch (Exception ex)

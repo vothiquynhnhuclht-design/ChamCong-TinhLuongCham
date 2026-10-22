@@ -1,0 +1,281 @@
+@page "/reports"
+@inject IPayslipRepository PayslipRepo
+@inject IEmployeeRepository EmployeeRepo
+@inject IDepartmentRepository DepartmentRepo
+@inject UserSessionService UserSession
+@inject IJSRuntime JS
+
+<PageTitle>Báo Cáo & Phân Tích Lương - HRM Enterprise</PageTitle>
+
+<div class="container-fluid py-3">
+    <!-- Page Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-bar-chart-line text-primary me-2"></i>Báo Cáo Quỹ Lương & Nhân Sự
+            </h3>
+            <p class="text-muted small mb-0">
+                Thống kê phân tích tổng hợp ngân sách lương, nghĩa vụ thuế, bảo hiểm và phân bổ chi phí theo phòng ban.
+            </p>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-primary fw-semibold shadow-2xs d-flex align-items-center gap-1.5" @onclick="ExportCsvAsync" disabled="@(!payslips.Any())">
+                <i class="bi bi-file-earmark-excel"></i>
+                <span>Xuất File Báo Cáo (CSV)</span>
+            </button>
+            <button class="btn btn-light border fw-semibold shadow-2xs d-flex align-items-center gap-1.5" onclick="window.print()">
+                <i class="bi bi-printer"></i>
+                <span>In Báo Cáo</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card border-0 shadow-2xs rounded-4 p-3 bg-white mb-4">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1">Kỳ Báo Cáo</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-calendar3"></i></span>
+                    <select class="form-select" @bind="selectedMonth" @bind:after="LoadReportDataAsync">
+                        @for (int m = 1; m <= 12; m++)
+                        {
+                            <option value="@m">Tháng @m</option>
+                        }
+                    </select>
+                    <select class="form-select" @bind="selectedYear" @bind:after="LoadReportDataAsync">
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1">Lọc Theo Phòng Ban</label>
+                <select class="form-select" @bind="selectedDepartmentId" @bind:after="FilterByDepartment">
+                    <option value="0">-- Tất cả phòng ban --</option>
+                    @foreach (var dept in departments)
+                    {
+                        <option value="@dept.Id">@dept.DepartmentName</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-12 col-md-4 text-md-end pt-md-3">
+                <span class="badge bg-light text-slate-700 border px-3 py-2 fw-medium">
+                    <i class="bi bi-info-circle text-primary me-1"></i> Số lượng nhân sự kỳ này: <strong>@filteredPayslips.Count</strong>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 KPI Summary Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Metric 1: Tổng Gross -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-2xs rounded-4 bg-white p-3.5 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-xs fw-bold text-muted text-uppercase">Tổng Quỹ Lương (Gross)</span>
+                    <div class="rounded-3 bg-blue-50 text-primary p-2">
+                        <i class="bi bi-wallet2 fs-5"></i>
+                    </div>
+                </div>
+                <div class="fs-4 fw-bold text-dark mb-1">
+                    @filteredPayslips.Sum(p => p.GrossSalary).ToString("N0") ₫
+                </div>
+                <div class="text-muted small" style="font-size: 12px;">
+                    Bao gồm lương chuẩn, phụ cấp và làm thêm giờ
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 2: Thực nhận Net -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-2xs rounded-4 bg-white p-3.5 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-xs fw-bold text-muted text-uppercase">Thực Nhận Người LĐ (Net)</span>
+                    <div class="rounded-3 bg-emerald-50 text-emerald-600 p-2">
+                        <i class="bi bi-cash-coin fs-5"></i>
+                    </div>
+                </div>
+                <div class="fs-4 fw-bold text-emerald-700 mb-1">
+                    @filteredPayslips.Sum(p => p.NetSalary).ToString("N0") ₫
+                </div>
+                <div class="text-muted small" style="font-size: 12px;">
+                    Tổng ngân sách chi trả trực tiếp cho tài khoản NV
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 3: Khấu trừ nghĩa vụ -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-2xs rounded-4 bg-white p-3.5 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-xs fw-bold text-muted text-uppercase">Khấu Trừ Nghĩa Vụ</span>
+                    <div class="rounded-3 bg-rose-50 text-rose-600 p-2">
+                        <i class="bi bi-shield-lock fs-5"></i>
+                    </div>
+                </div>
+                <div class="fs-4 fw-bold text-rose-600 mb-1">
+                    @filteredPayslips.Sum(p => p.TotalDeductions).ToString("N0") ₫
+                </div>
+                <div class="text-muted small" style="font-size: 12px;">
+                    Bảo hiểm bắt buộc (BHXH, BHYT, BHTN) & Thuế TNCN
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric 4: Giờ làm thêm OT -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-2xs rounded-4 bg-white p-3.5 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-xs fw-bold text-muted text-uppercase">Tổng Giờ Làm Thêm (OT)</span>
+                    <div class="rounded-3 bg-amber-50 text-amber-600 p-2">
+                        <i class="bi bi-clock-history fs-5"></i>
+                    </div>
+                </div>
+                <div class="fs-4 fw-bold text-amber-600 mb-1">
+                    @filteredPayslips.Sum(p => p.OvertimeHours).ToString("N1") <span class="fs-6 fw-normal text-muted">giờ</span>
+                </div>
+                <div class="text-muted small" style="font-size: 12px;">
+                    Tổng chi phí phát sinh ngoài giờ làm việc
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Table: Báo Cáo Chi Tiết Từng Nhân Viên -->
+    <div class="card border-0 shadow-2xs rounded-4 bg-white p-3.5 mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-table text-primary fs-5"></i>
+                <h5 class="fw-bold text-dark mb-0">Bảng Thống Kê Chi Tiết Nhân Sự Kỳ Tháng @selectedMonth/@selectedYear</h5>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
+                <thead class="table-light">
+                    <tr>
+                        <th>MÃ NV</th>
+                        <th>HỌ VÀ TÊN</th>
+                        <th>PHÒNG BAN</th>
+                        <th>CÔNG THỰC TẾ</th>
+                        <th>LƯƠNG CƠ BẢN</th>
+                        <th>PHỤ CẤP</th>
+                        <th>TỔNG GROSS</th>
+                        <th>KHẤU TRỪ</th>
+                        <th>THỰC NHẬN (NET)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!filteredPayslips.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                                Không có dữ liệu kỳ lương Tháng @selectedMonth/@selectedYear.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var p in filteredPayslips)
+                        {
+                            var emp = allEmployees.FirstOrDefault(e => e.Id == p.EmployeeId);
+                            <tr>
+                                <td class="fw-bold text-primary">@(emp?.EmployeeCode ?? $"NV{p.EmployeeId:D3}")</td>
+                                <td class="fw-semibold text-dark">@(emp?.FullName ?? "N/A")</td>
+                                <td class="text-secondary small">@(emp?.Department?.DepartmentName ?? "Chung")</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">
+                                        @p.ActualWorkDays.ToString("0.#") / @p.StandardWorkDays công
+                                    </span>
+                                </td>
+                                <td>@p.BasicSalary.ToString("N0") ₫</td>
+                                <td>@p.Allowance.ToString("N0") ₫</td>
+                                <td class="fw-semibold text-dark">@p.GrossSalary.ToString("N0") ₫</td>
+                                <td class="text-danger">-@p.TotalDeductions.ToString("N0") ₫</td>
+                                <td class="fw-bold text-success fs-6">@p.NetSalary.ToString("N0") ₫</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+                @if (filteredPayslips.Any())
+                {
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td colspan="3" class="text-uppercase">Tổng Cộng (@filteredPayslips.Count nhân sự)</td>
+                            <td>@filteredPayslips.Sum(p => p.ActualWorkDays).ToString("0.#") công</td>
+                            <td>@filteredPayslips.Sum(p => p.BasicSalary).ToString("N0") ₫</td>
+                            <td>@filteredPayslips.Sum(p => p.Allowance).ToString("N0") ₫</td>
+                            <td>@filteredPayslips.Sum(p => p.GrossSalary).ToString("N0") ₫</td>
+                            <td class="text-danger">-@filteredPayslips.Sum(p => p.TotalDeductions).ToString("N0") ₫</td>
+                            <td class="text-success fs-6">@filteredPayslips.Sum(p => p.NetSalary).ToString("N0") ₫</td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int selectedMonth = 10;
+    private int selectedYear = 2026;
+    private int selectedDepartmentId = 0;
+
+    private List<Payslip> payslips = new();
+    private List<Payslip> filteredPayslips = new();
+    private List<Employee> allEmployees = new();
+    private List<Department> departments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        allEmployees = (await EmployeeRepo.GetAllEmployeesAsync(includeInactive: true)).ToList();
+        departments = (await DepartmentRepo.GetAllDepartmentsAsync()).ToList();
+        await LoadReportDataAsync();
+    }
+
+    private async Task LoadReportDataAsync()
+    {
+        payslips = (await PayslipRepo.GetPayslipsByPeriodAsync(selectedMonth, selectedYear)).ToList();
+        FilterByDepartment();
+    }
+
+    private void FilterByDepartment()
+    {
+        if (selectedDepartmentId == 0)
+        {
+            filteredPayslips = payslips.ToList();
+        }
+        else
+        {
+            var empIdsInDept = allEmployees
+                .Where(e => e.DepartmentId == selectedDepartmentId)
+                .Select(e => e.Id)
+                .ToHashSet();
+
+            filteredPayslips = payslips.Where(p => empIdsInDept.Contains(p.EmployeeId)).ToList();
+        }
+    }
+
+    private async Task ExportCsvAsync()
+    {
+        if (!filteredPayslips.Any()) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Mã NV,Họ và Tên,Phòng Ban,Công Chuẩn,Công Thực Tế,Lương Cơ Bản,Phụ Cấp,Tổng Gross,Khấu Trừ,Thực Nhận (Net)");
+
+        foreach (var p in filteredPayslips)
+        {
+            var emp = allEmployees.FirstOrDefault(e => e.Id == p.EmployeeId);
+            sb.AppendLine($"\"{emp?.EmployeeCode}\",\"{emp?.FullName}\",\"{emp?.Department?.DepartmentName}\",{p.StandardWorkDays},{p.ActualWorkDays},{p.BasicSalary},{p.Allowance},{p.GrossSalary},{p.TotalDeductions},{p.NetSalary}");
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
+        var base64 = Convert.ToBase64String(bytes);
+        await JS.InvokeVoidAsync("downloadFileFromBase64", $"BaoCao_Luong_Thang_{selectedMonth}_{selectedYear}.csv", "text/csv;charset=utf-8", base64);
+    }
+}

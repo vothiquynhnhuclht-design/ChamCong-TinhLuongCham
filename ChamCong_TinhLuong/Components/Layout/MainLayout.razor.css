@@ -3,7 +3,7 @@
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    background-color: #f8fafc;
+    background-color: #f4f6fa;
 }
 
 main {
@@ -13,18 +13,95 @@ main {
     min-width: 0;
 }
 
+/* Dark Navy Sidebar */
 .sidebar {
-    background-color: #0f172a;
-    border-right: 1px solid #1e293b;
+    background: linear-gradient(180deg, #0b132b 0%, #0d1b3e 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .top-row {
     background-color: #ffffff;
-    border-bottom: 1px solid #e2e8f0;
-    height: 3.5rem;
+    border-bottom: 1px solid #eef2f6 !important;
+    height: 4rem;
     position: sticky;
     top: 0;
     z-index: 10;
+}
+
+/* Search Bar Pill Style */
+.search-input-wrapper {
+    position: relative;
+    max-width: 420px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 0.95rem;
+}
+
+.search-input {
+    background-color: #f1f5f9;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    padding-left: 40px;
+    padding-right: 16px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    font-size: 0.85rem;
+    color: #334155;
+    transition: all 0.2s ease;
+}
+
+.search-input:focus {
+    background-color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* Round Action Buttons */
+.btn-icon-round {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: none;
+    transition: background 0.15s ease;
+}
+
+.btn-icon-round:hover {
+    background-color: #f1f5f9;
+}
+
+/* User Avatar & Info */
+.user-avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #e2e8f0;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-display-name {
+    font-size: 0.825rem;
+    color: #0f172a;
+}
+
+.user-display-role {
+    font-size: 11px;
 }
 
 @media (min-width: 641px) {
@@ -33,8 +110,8 @@ main {
     }
 
     .sidebar {
-        width: 260px;
-        min-width: 260px;
+        width: 250px;
+        min-width: 250px;
         height: 100vh;
         position: sticky;
         top: 0;
@@ -42,29 +119,8 @@ main {
     }
 
     .content {
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
+        padding-left: 1.75rem !important;
+        padding-right: 1.75rem !important;
+        max-width: 1500px;
     }
-}
-
-#blazor-error-ui {
-    background: #fef2f2;
-    color: #991b1b;
-    border-top: 2px solid #ef4444;
-    bottom: 0;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    display: none;
-    left: 0;
-    padding: 0.75rem 1.5rem;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
-}
-
-#blazor-error-ui .dismiss {
-    cursor: pointer;
-    position: absolute;
-    right: 1rem;
-    top: 0.75rem;
-    color: #991b1b;
 }

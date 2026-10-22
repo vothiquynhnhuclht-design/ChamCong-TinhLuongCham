@@ -6,9 +6,13 @@ public class TimeAttendance
 {
     public int Id { get; set; }
     
-    // Foreign Key
+    // Foreign Key về Employee
     public int EmployeeId { get; set; }
     public Employee? Employee { get; set; }
+
+    // Foreign Key về WorkShift (Ca làm việc)
+    public int? WorkShiftId { get; set; }
+    public WorkShift? WorkShift { get; set; }
 
     public DateTime WorkDate { get; set; } // Ngày làm việc
     public TimeSpan? CheckIn { get; set; } // Giờ vào thực tế
@@ -21,4 +25,7 @@ public class TimeAttendance
     public double OvertimeHours { get; set; } = 0.0; // Số giờ tăng ca OT
     public AttendanceStatus Status { get; set; } = AttendanceStatus.Present;
     public string? Note { get; set; }
+
+    public string? PhotoPath { get; set; } // Ảnh chụp xác thực khi vào ca (Check-in)
+    public string? CheckOutPhotoPath { get; set; } // Ảnh chụp xác thực khi ra ca (Check-out)
 }

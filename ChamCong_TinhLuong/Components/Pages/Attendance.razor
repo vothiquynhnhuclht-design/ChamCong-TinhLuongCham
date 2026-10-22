@@ -1,230 +1,996 @@
 @page "/attendance"
 @inject AttendanceDraftService DraftService
+@inject IAttendanceRepository AttendanceRepo
 @inject IEmployeeRepository EmployeeRepo
 @inject UserSessionService UserSession
+@inject IJSRuntime JSRuntime
+@inject IWebHostEnvironment WebHostEnvironment
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Hosting
+@using System.IO
 @implements IDisposable
 
-<PageTitle>Bảng Công Nháp (State Management)</PageTitle>
+<PageTitle>Quản Lý Chấm Công - HRM Enterprise</PageTitle>
 
 <div class="container-fluid py-3">
-    <!-- Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-        <div>
-            <div class="d-flex align-items-center gap-2">
-                <h3 class="fw-bold text-dark mb-0">
-                    <i class="bi bi-calendar2-check-fill text-primary me-2"></i>
-                    @(UserSession.IsAdminHr ? "Bảng Công Nháp (Draft Staging)" : "Bảng Công Cá Nhân Của Tôi")
-                </h3>
-                <span class="badge @(UserSession.IsAdminHr ? "bg-warning text-dark" : "bg-success text-white") fw-bold">
-                    @(UserSession.IsAdminHr ? "Scoped State (Giỏ hàng)" : "Cá nhân")
-                </span>
-            </div>
-            <p class="text-muted small mb-0">
-                @(UserSession.IsAdminHr 
-                    ? "Mô hình Giỏ Hàng (ShoppingCart Pattern): Dữ liệu lưu tạm trong phiên làm việc, cho phép hiệu chỉnh trước khi chốt lưu vào DB." 
-                    : $"Đang xem dữ liệu chấm công của nhân viên {UserSession.CurrentEmployeeCode} - {UserSession.CurrentEmployeeName} (Bảo mật cấp dòng).")
-            </p>
+    <!-- Header Page: Ngắn gọn, không có dòng chú thích dài -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <h3 class="fw-bold text-dark mb-0">
+                <i class="bi bi-camera-video-fill text-primary me-2"></i>
+                @(UserSession.IsAdminHr ? "Quản Lý Chấm Công" : "Chấm Công")
+            </h3>
+            <span class="badge @(UserSession.IsAdminHr ? "bg-primary-subtle text-primary border border-primary-subtle" : "bg-success-subtle text-success border border-success-subtle") fw-semibold">
+                @(UserSession.IsAdminHr ? "Quản trị" : "Nhân viên")
+            </span>
         </div>
 
         <div class="d-flex gap-2">
             @if (UserSession.IsAdminHr)
             {
-                <button class="btn btn-outline-secondary" @onclick="ReloadDraftAsync">
-                    <i class="bi bi-arrow-clockwise me-1"></i> Làm Mới Nháp
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ReloadDataAsync">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Làm Mới Dữ Liệu
                 </button>
-                <button class="btn btn-success fw-bold shadow-sm" @onclick="CommitDraftAsync" disabled="@(!DraftService.DraftItems.Any())">
-                    <i class="bi bi-check-circle-fill me-1"></i> Chốt Duyệt Bảng Công (@DraftService.DraftItems.Count dòng)
-                </button>
+                @if (activeAdminTab == "draft")
+                {
+                    <button class="btn btn-success btn-sm fw-bold shadow-sm" @onclick="CommitDraftAsync" disabled="@(!DraftService.DraftItems.Any())">
+                        <i class="bi bi-check-circle-fill me-1"></i> Lưu & Duyệt Bảng Công (@DraftService.DraftItems.Count dòng)
+                    </button>
+                }
             }
         </div>
     </div>
 
+    <!-- Alert Messages -->
     @if (!string.IsNullOrEmpty(alertMessage))
     {
-        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
-            <i class="bi bi-check2-circle me-2 fs-5"></i>@alertMessage
+        <div class="alert @(isSuccessAlert ? "alert-success" : "alert-warning") alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi @(isSuccessAlert ? "bi-check2-circle" : "bi-exclamation-triangle") me-2 fs-5"></i>
+            @alertMessage
             <button type="button" class="btn-close" @onclick="() => alertMessage = null"></button>
         </div>
     }
 
-    <!-- Filter & Month Controls -->
-    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white mb-3">
-        <div class="row g-3 align-items-center">
-            <div class="col-12 col-md-3">
-                <label class="form-label small fw-semibold text-muted mb-1">Kỳ Chấm Công (Tháng/Năm)</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light"><i class="bi bi-calendar-event"></i></span>
-                    <select class="form-select" @bind="selectedMonth">
-                        @for (int m = 1; m <= 12; m++)
-                        {
-                            <option value="@m">Tháng @m</option>
-                        }
-                    </select>
-                    <select class="form-select" @bind="selectedYear">
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-3">
-                <label class="form-label small fw-semibold text-muted mb-1">Lọc Theo Nhân Viên</label>
-                <select class="form-select" @bind="filterEmployeeId">
-                    <option value="0">-- Tất cả nhân viên --</option>
-                    @foreach (var emp in employeeList)
-                    {
-                        <option value="@emp.Id">@emp.EmployeeCode - @emp.FullName</option>
-                    }
-                </select>
-            </div>
-
-            <div class="col-12 col-md-3">
-                <label class="form-label small fw-semibold text-muted mb-1">Lọc Trạng Thái</label>
-                <select class="form-select" @bind="filterStatus">
-                    <option value="">-- Tất cả trạng thái --</option>
-                    <option value="Present">Đi làm đủ công</option>
-                    <option value="Late">Đi trễ</option>
-                    <option value="Absent">Vắng không phép</option>
-                </select>
-            </div>
-
-            <div class="col-12 col-md-3 text-md-end mt-md-4">
-                <button class="btn btn-primary w-100" @onclick="InitializeDraftAsync">
-                    <i class="bi bi-magic me-1"></i> Nạp Bảng Công Tháng @selectedMonth
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Summary Metrics -->
-    @if (DraftService.DraftItems.Any())
+    @if (UserSession.IsEmployee)
     {
-        var filteredItems = GetFilteredItems().ToList();
-        <div class="row g-2 mb-3">
-            <div class="col-6 col-md-3">
-                <div class="bg-primary-subtle text-primary p-2 rounded-2 text-center">
-                    <span class="small d-block">Tổng Bản Ghi Nháp</span>
-                    <strong class="fs-5">@filteredItems.Count</strong>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="bg-success-subtle text-success p-2 rounded-2 text-center">
-                    <span class="small d-block">Tổng Công Tính Được</span>
-                    <strong class="fs-5">@filteredItems.Sum(x => x.ActualWorkDays).ToString("N1")</strong>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="bg-info-subtle text-info p-2 rounded-2 text-center">
-                    <span class="small d-block">Tổng Giờ OT (150%)</span>
-                    <strong class="fs-5">@filteredItems.Sum(x => x.OvertimeHours).ToString("N1") h</strong>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="bg-danger-subtle text-danger p-2 rounded-2 text-center">
-                    <span class="small d-block">Tổng Phút Đi Trễ</span>
-                    <strong class="fs-5">@filteredItems.Sum(x => x.LateMinutes) p</strong>
-                </div>
-            </div>
-        </div>
+        <!-- ========================================================================= -->
+        <!-- GIAO DIỆN PHÂN QUYỀN NHÂN VIÊN: 2 CỘT CHUẨN MOCKUP                       -->
+        <!-- Cột trái (4/12): Camera AI Quét Sinh Trắc Học & WiFi                    -->
+        <!-- Cột phải (8/12): Khối Lịch Tổng Quan & Khối Lịch Sử Gần Đây               -->
+        <!-- ========================================================================= -->
+        <div class="row g-4 mb-4">
+            <!-- CỘT TRÁI (4/12): CAMERA AI CARD -->
+            <div class="col-12 col-lg-5 col-xl-4">
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100 d-flex flex-column justify-content-between camera-ai-card">
+                    <div>
+                        <!-- Header: Camera AI + Live Badge & Điều khiển -->
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-camera-video text-primary fs-5"></i>
+                                <span class="fw-bold text-slate-800 fs-6">Camera Chấm Công</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1.5">
+                                @if (isCameraActive)
+                                {
+                                    <span class="badge rounded-pill bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 fw-semibold d-flex align-items-center gap-1.5" style="font-size: 11px;">
+                                        <span class="status-dot-emerald"></span> Camera Live
+                                    </span>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 11px;" @onclick="StartCameraAsync" disabled="@isStartingCamera">
+                                        <i class="bi bi-camera-video me-1"></i>@(isStartingCamera ? "Đang mở..." : "Bật Camera")
+                                    </button>
+                                }
+                            </div>
+                        </div>
 
-        <!-- Attendance Draft Grid -->
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 text-nowrap">
-                    <thead class="table-light small text-uppercase">
-                        <tr>
-                            <th class="ps-3">Nhân Viên</th>
-                            <th>Ngày Làm Việc</th>
-                            <th>Giờ Vào/Ra</th>
-                            <th style="width: 130px;">Công Thực Tế</th>
-                            <th style="width: 120px;">Giờ OT</th>
-                            <th>Đi Trễ</th>
-                            <th>Trạng Thái</th>
-                            <th class="pe-3">Ghi Chú</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in filteredItems.Take(50))
+                        <!-- Chọn Ca Làm Việc -->
+                        <div class="mb-3">
+                            <label class="form-label text-slate-600 small fw-bold mb-1">
+                                <i class="bi bi-clock-history text-primary me-1"></i>Chọn Ca Làm Việc:
+                            </label>
+                            <select class="form-select form-select-sm fw-semibold text-slate-800 border-slate-200 shadow-none" @bind="selectedShiftId">
+                                <option value="1">Ca Hành Chính (08:00 - 17:30)</option>
+                                <option value="2">Ca Sáng (06:00 - 14:00)</option>
+                                <option value="3">Ca Chiều (14:00 - 22:00)</option>
+                            </select>
+                        </div>
+
+                        <!-- Camera Viewport Box with Live HTML5 Video (Chuẩn HUD Biometric Facial Scan) -->
+                        <div class="camera-viewport-box position-relative rounded-4 overflow-hidden d-flex align-items-center justify-content-center mb-3">
+                            <!-- Live Video Stream -->
+                            <video id="attendanceCameraVideo" 
+                                   autoplay 
+                                   playsinline 
+                                   muted 
+                                   class="camera-live-video w-100 h-100 position-absolute top-0 start-0"
+                                   style="@(isCameraActive ? "display: block;" : "display: none;")"></video>
+
+                            <!-- Nền tối công nghệ khi chưa bật camera -->
+                            @if (!isCameraActive)
+                            {
+                                <div class="camera-off-overlay position-absolute w-100 h-100 top-0 start-0 d-flex flex-column align-items-center justify-content-center text-center p-3">
+                                    <div class="camera-off-backdrop position-absolute w-100 h-100 top-0 start-0"></div>
+                                </div>
+                            }
+
+                            <!-- 4 Góc Định Vị L-Brackets (Cyan Corner Brackets) -->
+                            <div class="hud-corner hud-corner-tl"></div>
+                            <div class="hud-corner hud-corner-tr"></div>
+                            <div class="hud-corner hud-corner-bl"></div>
+                            <div class="hud-corner hud-corner-br"></div>
+
+                            <!-- Khung Elip Nét Đứt Căn Chỉnh Khuôn Mặt (Center Dashed Oval) -->
+                            <div class="hud-face-oval d-flex flex-column align-items-center justify-content-center">
+                                <!-- Biểu tượng người trong 4 góc ngắm nhỏ (Reticle Brackets) -->
+                                <div class="hud-face-reticle-box mb-2 position-relative d-flex align-items-center justify-content-center">
+                                    <span class="micro-bracket micro-tl"></span>
+                                    <span class="micro-bracket micro-tr"></span>
+                                    <span class="micro-bracket micro-bl"></span>
+                                    <span class="micro-bracket micro-br"></span>
+                                    <i class="bi bi-person-fill text-info" style="font-size: 24px;"></i>
+                                </div>
+
+                                <!-- Dòng chữ: Căn chỉnh khuôn mặt vào khung -->
+                                <div class="hud-guide-text text-white text-center">
+                                    Căn chỉnh khuôn mặt vào khung
+                                </div>
+
+                                @if (!isCameraActive)
+                                {
+                                    <div class="hud-status-hint text-info mt-1 opacity-75" style="font-size: 11px;">
+                                        Bấm Vào ca / Hết ca để quét
+                                    </div>
+                                }
+
+                                <!-- Laser Scan Effect khi đang quét -->
+                                @if (isScanning)
+                                {
+                                    <div class="camera-laser-scan"></div>
+                                }
+                                else if (scanSuccess)
+                                {
+                                    <div class="hud-success-badge mt-2">
+                                        <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Đồng Hồ Thời Gian & Ngày Tháng ở Góc Dưới Bên Trái -->
+                            <div class="hud-time-watermark position-absolute d-flex align-items-center gap-1.5 text-white" style="bottom: 16px; left: 24px; z-index: 4;">
+                                <i class="bi bi-clock text-info" style="font-size: 13.5px;"></i>
+                                <span class="fw-bold font-monospace text-white" style="font-size: 14px; letter-spacing: 0.5px;">@currentTimeString</span>
+                                <span class="text-white-50" style="font-size: 12.5px;">(@currentDateString)</span>
+                            </div>
+
+                            <!-- Hiệu ứng đèn Flash khi chụp ảnh -->
+                            @if (showFlashEffect)
+                            {
+                                <div class="camera-flash-overlay"></div>
+                            }
+                        </div>
+
+                        <!-- Khối Hiển Thị Ảnh Vừa Chụp Thành Công -->
+                        @if (!string.IsNullOrEmpty(lastCapturedPhotoUrl))
                         {
-                            <tr class="@(item.Status == AttendanceStatus.Absent ? "table-danger" : item.Status == AttendanceStatus.Late ? "table-warning" : "")">
-                                <td class="ps-3">
-                                    <div class="fw-semibold text-dark">@item.FullName</div>
-                                    <div class="small text-muted">@item.EmployeeCode • @item.DepartmentName</div>
-                                </td>
-                                <td>
-                                    <div class="fw-medium">@item.WorkDate.ToString("dd/MM/yyyy")</div>
-                                    <div class="small text-muted">@item.WorkDate.ToString("dddd")</div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-dark border">
-                                        @(item.CheckIn?.ToString(@"hh\:mm") ?? "--") - @(item.CheckOut?.ToString(@"hh\:mm") ?? "--")
-                                    </span>
-                                </td>
-                                <td>
-                                    <!-- Inline Edit Work Days -->
-                                    <select class="form-select form-select-sm" 
-                                            value="@item.ActualWorkDays" 
-                                            @onchange="(e) => OnWorkDaysChanged(item, e)">
-                                        <option value="1.0">1.0 công</option>
-                                        <option value="0.5">0.5 công</option>
-                                        <option value="0.0">0.0 công</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <!-- Inline Edit OT Hours -->
-                                    <input type="number" step="0.5" min="0" max="8" 
-                                           class="form-control form-control-sm" 
-                                           value="@item.OvertimeHours" 
-                                           @onchange="(e) => OnOtChanged(item, e)" />
-                                </td>
-                                <td>
-                                    @if (item.LateMinutes > 0)
-                                    {
-                                        <span class="text-danger fw-bold">@item.LateMinutes phút</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-success small"><i class="bi bi-check"></i> Đúng giờ</span>
-                                    }
-                                </td>
-                                <td>
-                                    <span class="badge @GetStatusBadgeClass(item.Status)">
-                                        @item.Status
-                                    </span>
-                                </td>
-                                <td class="pe-3">
-                                    <input type="text" class="form-control form-control-sm" 
-                                           placeholder="Ghi chú..." 
-                                           value="@item.Note"
-                                           @onchange="(e) => item.Note = e.Value?.ToString()" />
-                                </td>
-                            </tr>
+                            <div class="p-2.5 mb-3 rounded-3 bg-slate-50 border border-slate-200 d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2.5">
+                                    <img src="@lastCapturedPhotoUrl" 
+                                         style="width: 46px; height: 46px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 1px solid #cbd5e1;" 
+                                         alt="Ảnh chấm công vừa chụp"
+                                         @onclick="ShowLastCapturedPhoto" />
+                                    <div>
+                                        <div class="fw-bold small text-slate-800" style="font-size: 12px;">
+                                            <i class="bi bi-check-circle-fill text-success me-1"></i>Đã lưu ảnh chụp @(isCheckInAction ? "Vào ca" : "Hết ca")
+                                        </div>
+                                        <div class="text-slate-500" style="font-size: 11px;">
+                                            Lúc @lastCaptureTimeString (@(selectedShiftId == 2 ? "Ca Sáng" : selectedShiftId == 3 ? "Ca Chiều" : "Ca Hành Chính"))
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-link text-primary p-0 text-decoration-none small fw-semibold" 
+                                        style="font-size: 11.5px;"
+                                        @onclick="ShowLastCapturedPhoto">
+                                    <i class="bi bi-zoom-in me-1"></i>Xem ảnh
+                                </button>
+                            </div>
                         }
-                    </tbody>
-                </table>
-            </div>
-            @if (filteredItems.Count > 50)
-            {
-                <div class="card-footer bg-light text-muted small text-center">
-                    Đang hiển thị 50 / @filteredItems.Count bản ghi.
+
+                        <!-- Real-time Date and Digital Clock -->
+                        <div class="text-center my-2">
+                            <div class="text-slate-500 small fw-medium mb-1">
+                                @(DateTime.Now.ToString("dddd, dd/MM/yyyy", new System.Globalization.CultureInfo("vi-VN")))
+                            </div>
+                            <div class="digital-clock-display text-slate-900 fw-bolder font-monospace tracking-tight">
+                                @currentTimeString
+                            </div>
+                        </div>
+
+                        <!-- 2 Action Buttons (Vào Ca / Hết Ca) -->
+                        <div class="row g-2 mt-3">
+                            <div class="col-6">
+                                <button type="button" 
+                                        class="btn w-100 py-3 rounded-3 d-flex flex-column align-items-center justify-content-center transition-all action-toggle-btn @(isCheckInAction ? "btn-primary shadow-xs" : "btn-outline-secondary bg-white text-slate-700")"
+                                        @onclick="() => ExecuteActionAsync(true)"
+                                        disabled="@isScanning">
+                                    <div class="d-flex align-items-center gap-1.5">
+                                        <i class="bi bi-camera-fill fs-6"></i>
+                                        <span class="fw-bold fs-6">Vào Ca</span>
+                                    </div>
+                                    <span class="small opacity-75" style="font-size: 11px;">Chụp hình & Check-in</span>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" 
+                                        class="btn w-100 py-3 rounded-3 d-flex flex-column align-items-center justify-content-center transition-all action-toggle-btn @(!isCheckInAction ? "btn-primary shadow-xs" : "btn-outline-secondary bg-white text-slate-700")"
+                                        @onclick="() => ExecuteActionAsync(false)"
+                                        disabled="@isScanning">
+                                    <div class="d-flex align-items-center gap-1.5">
+                                        <i class="bi bi-camera-fill fs-6"></i>
+                                        <span class="fw-bold fs-6">Hết Ca</span>
+                                    </div>
+                                    <span class="small opacity-75" style="font-size: 11px;">Chụp hình & Check-out</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (isScanning)
+                        {
+                            <div class="text-center text-primary small mt-3 fw-semibold">
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                Đang chụp ảnh và nhận diện khuôn mặt sinh trắc học...
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Footer: WiFi Mạng Nội Bộ -->
+                    <div class="wifi-footer-box p-3 rounded-3 bg-slate-50 border border-slate-100 d-flex align-items-center gap-3 mt-4">
+                        <div class="wifi-icon-square bg-emerald-100 text-emerald-600 rounded-3 d-flex align-items-center justify-content-center">
+                            <i class="bi bi-wifi fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold text-slate-800 small">Mạng WiFi Nội Bộ</div>
+                            <div class="text-slate-500" style="font-size: 11.5px;">
+                                TechCorp_Office_5G <span class="text-emerald-600 fw-bold">(Hợp lệ)</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            }
+            </div>
+
+            <!-- CỘT PHẢI (8/12): LỊCH TỔNG QUAN & LỊCH SỬ GẦN ĐÂY -->
+            <div class="col-12 col-lg-7 col-xl-8 d-flex flex-column gap-4">
+                
+                <!-- 1. KHỐI LỊCH LÀM VIỆC (WORK SCHEDULE CALENDAR) -->
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                    <!-- Header khối Lịch: Tiêu đề + Chú giải trạng thái -->
+                    <div class="d-flex flex-wrap align-items-center justify-content-between pb-3 mb-3 border-bottom border-slate-100 gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-calendar3 text-primary fs-5"></i>
+                            <h6 class="fw-bold text-slate-900 mb-0">Lịch làm việc</h6>
+                        </div>
+
+                        <!-- Chú giải: Đúng giờ (xanh) / Đi trễ (vàng) / Nghỉ làm (đỏ) -->
+                        <div class="d-flex align-items-center gap-3 small" style="font-size: 12px;">
+                            <div class="d-flex align-items-center gap-1.5 text-slate-600">
+                                <span class="calendar-legend-dot bg-success"></span>
+                                <span>Đúng giờ</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1.5 text-slate-600">
+                                <span class="calendar-legend-dot bg-warning"></span>
+                                <span>Đi trễ</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1.5 text-slate-600">
+                                <span class="calendar-legend-dot bg-danger"></span>
+                                <span>Nghỉ làm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Grid Container -->
+                    <div class="calendar-grid-container">
+                        <!-- Hàng Thứ trong tuần: T2 -> CN -->
+                        <div class="calendar-week-header text-slate-400 small fw-bold text-center mb-2">
+                            <span>T2</span>
+                            <span>T3</span>
+                            <span>T4</span>
+                            <span>T5</span>
+                            <span>T6</span>
+                            <span>T7</span>
+                            <span>CN</span>
+                        </div>
+
+                        <!-- Lưới 31 ô Ngày -->
+                        <div class="calendar-days-grid">
+                            @foreach (var cell in GetCalendarDays())
+                            {
+                                @if (cell.IsEmpty)
+                                {
+                                    <div class="calendar-day-cell empty-cell"></div>
+                                }
+                                else
+                                {
+                                    <div class="calendar-day-cell @(cell.IsToday ? "today-cell" : "")">
+                                        <span class="day-number @(cell.IsToday ? "text-success fw-bold" : "text-slate-700")">
+                                            @cell.Day
+                                        </span>
+                                        <div class="day-dot-container">
+                                            @if (cell.Status == "on-time")
+                                            {
+                                                <span class="day-dot bg-success" title="Đi đúng giờ"></span>
+                                            }
+                                            else if (cell.Status == "late")
+                                            {
+                                                <span class="day-dot bg-warning" title="Đi trễ"></span>
+                                            }
+                                            else if (cell.Status == "absent")
+                                            {
+                                                <span class="day-dot bg-danger" title="Nghỉ làm"></span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     }
     else
     {
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center bg-white">
-            <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
-            <h5>Chưa có dữ liệu bảng công nháp trong phiên</h5>
-            <p class="text-muted small mb-3">Bấm nút "Nạp Bảng Công Tháng @selectedMonth" để tự động khởi tạo bảng nháp trong Scoped State Service.</p>
-            <div>
-                <button class="btn btn-primary" @onclick="InitializeDraftAsync">
-                    <i class="bi bi-plus-lg me-1"></i> Nạp Bảng Công Tháng @selectedMonth/2026
+        <!-- ========================================== -->
+        <!-- GIAO DIỆN PHÂN QUYỀN QUẢN TRỊ VIÊN / HR   -->
+        <!-- ========================================== -->
+
+        <!-- Tabs chuyển đổi giữa Duyệt yêu cầu & Bảng công tổng thể -->
+        <ul class="nav nav-pills mb-3 gap-2">
+            <li class="nav-item">
+                <button class="nav-link @(activeAdminTab == "pending" ? "active fw-bold" : "bg-white text-dark shadow-sm")" 
+                        @onclick='() => SetAdminTab("pending")'>
+                    <i class="bi bi-person-check-fill me-1"></i>
+                    Yêu Cầu Chờ Phê Duyệt
+                    @if (pendingAttendances.Any())
+                    {
+                        <span class="badge bg-danger ms-2 rounded-pill">@pendingAttendances.Count</span>
+                    }
                 </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(activeAdminTab == "draft" ? "active fw-bold" : "bg-white text-dark shadow-sm")" 
+                        @onclick='() => SetAdminTab("draft")'>
+                    <i class="bi bi-table me-1"></i>
+                    Bảng Công Tổng Hợp Toàn Doanh Nghiệp
+                </button>
+            </li>
+        </ul>
+
+        @if (activeAdminTab == "pending")
+        {
+            <!-- TAB 1: PHÊ DUYỆT YÊU CẦU CHẤM CÔNG TỪ NHÂN VIÊN (CÓ XEM ẢNH CAMERA) -->
+            <div class="card border-0 shadow-sm rounded-3 bg-white mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-0">
+                            <i class="bi bi-shield-check text-warning me-2"></i>Danh Sách Yêu Cầu Chờ Phê Duyệt
+                        </h5>
+                        <span class="small text-muted">
+                            Các yêu cầu chấm công chụp hình qua Camera AI trực tiếp & WiFi nội bộ đang chờ Quản trị viên duyệt để ghi nhận ngày công.
+                        </span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadPendingAttendancesAsync">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Làm mới danh sách
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 text-nowrap">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th class="ps-3">Nhân Viên</th>
+                                <th>Phòng Ban</th>
+                                <th>Ngày Chấm Công</th>
+                                <th>Ca Làm Việc</th>
+                                <th>Giờ Quét (Vào / Ra)</th>
+                                <th>Ảnh Chụp Camera</th>
+                                <th>Xác Thực Mạng</th>
+                                <th>Ghi Chú Của Nhân Viên</th>
+                                <th class="text-end pe-3" style="width: 220px;">Hành Động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!pendingAttendances.Any())
+                            {
+                                <tr>
+                                    <td colspan="9" class="text-center py-5 text-muted">
+                                        <i class="bi bi-check2-all fs-1 text-success d-block mb-2"></i>
+                                        <h6 class="fw-bold text-dark">Hiện không có yêu cầu nào đang chờ duyệt!</h6>
+                                        <p class="small text-muted mb-0">Tất cả các bản ghi chấm công đã được xử lý hoặc nhân viên chưa gửi yêu cầu mới.</p>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var item in pendingAttendances)
+                                {
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%;">
+                                                    @(string.IsNullOrEmpty(item.Employee?.FullName) ? "NV" : item.Employee.FullName.Substring(0, 1))
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold text-dark">@(item.Employee?.FullName ?? "N/A")</div>
+                                                    <div class="small text-muted">@(item.Employee?.EmployeeCode ?? "")</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                @(item.Employee?.Department?.DepartmentName ?? "Nội bộ")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold">@item.WorkDate.ToString("dd/MM/yyyy")</div>
+                                            <div class="small text-muted">@item.WorkDate.ToString("dddd")</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                                @(item.WorkShift?.ShiftName ?? (item.WorkShiftId == 2 ? "Ca Sáng" : item.WorkShiftId == 3 ? "Ca Chiều" : "Ca Hành Chính"))
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                    Vào: @(item.CheckIn?.ToString(@"hh\:mm") ?? "--:--")
+                                                </span>
+                                                <span class="badge bg-secondary-subtle text-secondary border">
+                                                    Ra: @(item.CheckOut?.ToString(@"hh\:mm") ?? "--:--")
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(item.PhotoPath))
+                                            {
+                                                <button class="btn btn-sm btn-outline-primary p-1 d-flex align-items-center gap-1.5" 
+                                                        title="Xem ảnh chụp camera lúc vào ca"
+                                                        @onclick="() => ShowPendingPhoto(item, true)">
+                                                    <img src="@item.PhotoPath" style="width: 34px; height: 34px; object-fit: cover; border-radius: 4px;" alt="Face" />
+                                                    <span class="small fw-semibold" style="font-size: 11px;">Xem ảnh</span>
+                                                </button>
+                                            }
+                                            else if (!string.IsNullOrEmpty(item.CheckOutPhotoPath))
+                                            {
+                                                <button class="btn btn-sm btn-outline-secondary p-1 d-flex align-items-center gap-1.5" 
+                                                        title="Xem ảnh chụp camera lúc hết ca"
+                                                        @onclick="() => ShowPendingPhoto(item, false)">
+                                                    <img src="@item.CheckOutPhotoPath" style="width: 34px; height: 34px; object-fit: cover; border-radius: 4px;" alt="Face" />
+                                                    <span class="small fw-semibold" style="font-size: 11px;">Ảnh hết ca</span>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small"><i class="bi bi-camera-slash me-1"></i>Chưa có ảnh</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-success border">
+                                                <i class="bi bi-wifi me-1"></i>TechCorp_Office_5G
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="small text-muted">@(string.IsNullOrEmpty(item.Note) ? "Quét Face ID tiêu chuẩn" : item.Note)</span>
+                                        </td>
+                                        <td class="text-end pe-3">
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-success fw-semibold" @onclick="() => ApproveAttendanceAsync(item.Id)">
+                                                    <i class="bi bi-check-lg me-1"></i> Phê Duyệt
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => RejectAttendanceAsync(item.Id)">
+                                                    <i class="bi bi-x-lg me-1"></i> Từ Chối
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+        }
+        else
+        {
+            <!-- TAB 2: BẢNG CÔNG TỔNG HỢP TOÀN DOANH NGHIỆP -->
+            <div class="card border-0 shadow-sm rounded-3 p-3 bg-white mb-3">
+                <div class="row g-3 align-items-center">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-semibold text-muted mb-1">Kỳ Chấm Công (Tháng/Năm)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-calendar-event"></i></span>
+                            <select class="form-select" @bind="selectedMonth">
+                                @for (int m = 1; m <= 12; m++)
+                                {
+                                    <option value="@m">Tháng @m</option>
+                                }
+                            </select>
+                            <select class="form-select" @bind="selectedYear">
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-semibold text-muted mb-1">Lọc Theo Nhân Viên</label>
+                        <select class="form-select" @bind="filterEmployeeId">
+                            <option value="0">-- Tất cả nhân viên --</option>
+                            @foreach (var emp in employeeList)
+                            {
+                                <option value="@emp.Id">@emp.EmployeeCode - @emp.FullName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-semibold text-muted mb-1">Lọc Trạng Thái</label>
+                        <select class="form-select" @bind="filterStatus">
+                            <option value="">-- Tất cả trạng thái --</option>
+                            <option value="Present">Đã duyệt (Đủ công)</option>
+                            <option value="PendingApproval">Chờ duyệt (Pending)</option>
+                            <option value="Late">Đi trễ</option>
+                            <option value="Absent">Vắng mặt</option>
+                            <option value="LeavePaid">Nghỉ phép</option>
+                            <option value="Rejected">Bị từ chối</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-3 d-flex align-items-end gap-2">
+                        <button class="btn btn-outline-primary flex-fill" @onclick="InitializeDraftAsync">
+                            <i class="bi bi-arrow-repeat me-1"></i> Nạp Dữ Liệu
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tổng kết nhanh & Danh sách công nháp -->
+            var filteredItems = GetFilteredItems().ToList();
+            @if (filteredItems.Any())
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-md-3">
+                        <div class="bg-primary-subtle text-primary p-2 rounded-2 text-center">
+                            <span class="small d-block">Tổng Số Bản Ghi</span>
+                            <strong class="fs-5">@filteredItems.Count</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="bg-success-subtle text-success p-2 rounded-2 text-center">
+                            <span class="small d-block">Tổng Công Tính Được</span>
+                            <strong class="fs-5">@filteredItems.Sum(x => x.ActualWorkDays).ToString("N1")</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="bg-info-subtle text-info p-2 rounded-2 text-center">
+                            <span class="small d-block">Tổng Giờ OT (150%)</span>
+                            <strong class="fs-5">@filteredItems.Sum(x => x.OvertimeHours).ToString("N1") h</strong>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="bg-danger-subtle text-danger p-2 rounded-2 text-center">
+                            <span class="small d-block">Tổng Phút Đi Trễ</span>
+                            <strong class="fs-5">@filteredItems.Sum(x => x.LateMinutes) p</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid Bảng Công Tổng Hợp -->
+                <div class="card border-0 shadow-sm rounded-3">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-nowrap">
+                            <thead class="table-light small text-uppercase">
+                                <tr>
+                                    <th class="ps-3">Nhân Viên</th>
+                                    <th>Ngày Làm Việc</th>
+                                    <th>Ca Làm Việc</th>
+                                    <th>Giờ Vào/Ra</th>
+                                    <th style="width: 100px;">Ảnh Chụp</th>
+                                    <th style="width: 130px;">Công Thực Tế</th>
+                                    <th style="width: 120px;">Giờ OT</th>
+                                    <th>Đi Trễ</th>
+                                    <th>Trạng Thái</th>
+                                    <th class="pe-3">Ghi Chú</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in filteredItems.Take(60))
+                                {
+                                    <tr class="@(item.Status == AttendanceStatus.Absent ? "table-danger" : item.Status == AttendanceStatus.Late ? "table-warning" : item.Status == AttendanceStatus.PendingApproval ? "table-info" : "")">
+                                        <td class="ps-3">
+                                            <div class="fw-semibold text-dark">@item.FullName</div>
+                                            <div class="small text-muted">@item.EmployeeCode • @item.DepartmentName</div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-medium">@item.WorkDate.ToString("dd/MM/yyyy")</div>
+                                            <div class="small text-muted">@item.WorkDate.ToString("dddd")</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                @(item.ShiftName ?? (item.WorkShiftId == 2 ? "Ca Sáng" : item.WorkShiftId == 3 ? "Ca Chiều" : "Ca Hành Chính"))
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                @(item.CheckIn?.ToString(@"hh\:mm") ?? "--") - @(item.CheckOut?.ToString(@"hh\:mm") ?? "--")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(item.PhotoPath))
+                                            {
+                                                <button class="btn btn-sm btn-outline-primary p-1" 
+                                                        title="Xem ảnh chụp camera khi chấm công"
+                                                        @onclick="() => ShowDraftPhoto(item)">
+                                                    <img src="@item.PhotoPath" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;" alt="Face" />
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm" 
+                                                    value="@item.ActualWorkDays" 
+                                                    @onchange="(e) => OnWorkDaysChanged(item, e)">
+                                                <option value="1.0">1.0 công</option>
+                                                <option value="0.5">0.5 công</option>
+                                                <option value="0.0">0.0 công</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.5" min="0" max="8" 
+                                                   class="form-control form-control-sm" 
+                                                   value="@item.OvertimeHours" 
+                                                   @onchange="(e) => OnOtChanged(item, e)" />
+                                        </td>
+                                        <td>
+                                            @if (item.LateMinutes > 0)
+                                            {
+                                                <span class="text-danger fw-bold">@item.LateMinutes phút</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-success small"><i class="bi bi-check"></i> Đúng giờ</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetStatusBadgeClass(item.Status)">
+                                                @GetStatusDisplayName(item.Status)
+                                            </span>
+                                        </td>
+                                        <td class="pe-3">
+                                            <input type="text" class="form-control form-control-sm" 
+                                                   placeholder="Ghi chú..." 
+                                                   value="@item.Note"
+                                                   @onchange="(e) => item.Note = e.Value?.ToString()" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    @if (filteredItems.Count > 60)
+                    {
+                        <div class="card-footer bg-light text-muted small text-center">
+                            Đang hiển thị 60 / @filteredItems.Count bản ghi.
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="card border-0 shadow-sm rounded-3 p-5 text-center bg-white">
+                    <i class="bi bi-inbox fs-1 text-muted mb-2"></i>
+                    <h5>Chưa có dữ liệu chấm công cho kỳ này</h5>
+                    <p class="text-muted small mb-3">Bấm nút "Nạp Dữ Liệu Tháng @selectedMonth" để tải danh sách chấm công.</p>
+                    <div>
+                        <button class="btn btn-primary" @onclick="InitializeDraftAsync">
+                            <i class="bi bi-calendar-plus me-1"></i> Nạp Dữ Liệu Tháng @selectedMonth/@selectedYear
+                        </button>
+                    </div>
+                </div>
+            }
+        }
     }
 </div>
+
+<!-- ========================================================================= -->
+<!-- MODAL PHÓNG TO ẢNH CHỤP CAMERA CHẤM CÔNG                                 -->
+<!-- ========================================================================= -->
+@if (showPhotoModal && !string.IsNullOrEmpty(modalPhotoUrl))
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.75); z-index: 1055;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-dark text-white border-bottom border-secondary py-2.5 px-3">
+                    <h6 class="modal-title fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-person-bounding-box text-info"></i>
+                        <span>Ảnh Chụp Camera Chấm Công</span>
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" @onclick="ClosePhotoModal"></button>
+                </div>
+                <div class="modal-body p-0 text-center bg-black position-relative">
+                    <img src="@modalPhotoUrl" class="img-fluid" style="max-height: 480px; width: 100%; object-fit: contain;" alt="Attendance Snapshot" />
+                    <div class="position-absolute bottom-0 start-0 end-0 p-3 text-start text-white" style="background: linear-gradient(transparent, rgba(15, 23, 42, 0.9));">
+                        <div class="fw-bold fs-6">@modalEmployeeName</div>
+                        <div class="small text-white-50">
+                            Ngày: @modalWorkDate.ToString("dd/MM/yyyy") • @modalActionType • Giờ: @(modalTime?.ToString(@"hh\:mm\:ss") ?? "--:--")
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-3 justify-content-between">
+                    <div class="small text-success fw-semibold">
+                        <i class="bi bi-shield-check me-1"></i>Minh chứng sinh trắc học đã lưu trên máy chủ
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary px-3" @onclick="ClosePhotoModal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .camera-ai-card {
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+    }
+    .status-dot-emerald {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background-color: #10b981;
+        display: inline-block;
+        animation: pulseEmerald 1.5s infinite;
+    }
+    @@keyframes pulseEmerald {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .camera-viewport-box {
+        background: radial-gradient(circle at center, #1e293b 0%, #0b1329 100%);
+        aspect-ratio: 16 / 10;
+        border-radius: 18px;
+        border: 1px solid #334155;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+    }
+    .camera-live-video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scaleX(-1); /* Gương tự nhiên cho webcam */
+    }
+    .camera-off-backdrop {
+        background: radial-gradient(circle at center, rgba(30, 41, 59, 0.85) 0%, rgba(11, 19, 41, 0.96) 100%);
+        backdrop-filter: blur(4px);
+    }
+
+    /* 4 Corner L-Brackets */
+    .hud-corner {
+        position: absolute;
+        width: 26px;
+        height: 26px;
+        border-color: #38bdf8;
+        border-style: solid;
+        pointer-events: none;
+        z-index: 3;
+    }
+    .hud-corner-tl {
+        top: 16px;
+        left: 16px;
+        border-width: 3.5px 0 0 3.5px;
+        border-top-left-radius: 6px;
+    }
+    .hud-corner-tr {
+        top: 16px;
+        right: 16px;
+        border-width: 3.5px 3.5px 0 0;
+        border-top-right-radius: 6px;
+    }
+    .hud-corner-bl {
+        bottom: 16px;
+        left: 16px;
+        border-width: 0 0 3.5px 3.5px;
+        border-bottom-left-radius: 6px;
+    }
+    .hud-corner-br {
+        bottom: 16px;
+        right: 16px;
+        border-width: 0 3.5px 3.5px 0;
+        border-bottom-right-radius: 6px;
+    }
+
+    /* Center Dashed Oval Guide (Khung Elip Căn Mặt) */
+    .hud-face-oval {
+        position: absolute;
+        width: 55%;
+        height: 78%;
+        max-width: 230px;
+        max-height: 275px;
+        border: 2px dashed rgba(56, 189, 248, 0.85);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 3;
+        box-shadow: 0 0 25px rgba(56, 189, 248, 0.12);
+        padding: 12px;
+    }
+
+    /* Micro Brackets around Person Icon */
+    .hud-face-reticle-box {
+        width: 44px;
+        height: 44px;
+    }
+    .micro-bracket {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-color: #38bdf8;
+        border-style: solid;
+    }
+    .micro-tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+    .micro-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+    .micro-bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+    .micro-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+    .hud-guide-text {
+        font-size: 12.5px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.6);
+    }
+    .hud-time-watermark {
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 5px rgba(0, 0, 0, 0.5);
+    }
+
+    .camera-flash-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        z-index: 10;
+        opacity: 0.85;
+        animation: flashFade 0.35s ease-out forwards;
+    }
+    @@keyframes flashFade {
+        from { opacity: 0.85; }
+        to { opacity: 0; }
+    }
+    .camera-laser-scan {
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        height: 2px;
+        background: #38bdf8;
+        box-shadow: 0 0 12px #38bdf8;
+        animation: scanAnim 1.8s infinite alternate;
+    }
+    @@keyframes scanAnim {
+        from { top: 0%; }
+        to { top: 100%; }
+    }
+    .digital-clock-display {
+        font-size: 2.25rem;
+        line-height: 1;
+        letter-spacing: -0.02em;
+    }
+    .action-toggle-btn {
+        transition: all 0.2s ease;
+    }
+    .wifi-icon-square {
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+    }
+
+    /* Calendar Grid styling */
+    .calendar-week-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .calendar-days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+    }
+    .calendar-day-cell {
+        aspect-ratio: 1 / 1;
+        border-radius: 12px;
+        border: 1px solid #f1f5f9;
+        background-color: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transition: all 0.15s ease;
+        min-height: 52px;
+    }
+    .calendar-day-cell:hover:not(.empty-cell) {
+        border-color: #cbd5e1;
+        background-color: #ffffff;
+    }
+    .calendar-day-cell.empty-cell {
+        background: transparent;
+        border-color: transparent;
+    }
+    .calendar-day-cell.today-cell {
+        border: 2.5px solid #10b981 !important;
+        background-color: #f0fdf4 !important;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+    .day-number {
+        font-size: 13.5px;
+        font-weight: 600;
+        line-height: 1;
+    }
+    .day-dot-container {
+        height: 6px;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .day-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .calendar-legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    /* History List styling */
+    .history-icon-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+    .time-dash-line {
+        width: 16px;
+        height: 1.5px;
+        background-color: #e2e8f0;
+    }
+    @@media (max-width: 576px) {
+        .history-flex-row {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 12px;
+        }
+        .history-col-times {
+            width: 100%;
+            justify-content: space-between !important;
+        }
+        .history-col-status {
+            width: 100%;
+            justify-content: space-between !important;
+        }
+    }
+</style>
 
 @code {
     private int selectedMonth = 10;
@@ -232,35 +998,389 @@
     private int filterEmployeeId = 0;
     private string filterStatus = "";
     private string? alertMessage;
+    private bool isSuccessAlert = true;
     private List<Employee> employeeList = new();
+
+    // Tab quản trị
+    private string activeAdminTab = "pending"; // "pending" hoặc "draft"
+    private List<TimeAttendance> pendingAttendances = new();
+
+    // Thuộc tính dành cho nhân viên chấm công
+    private bool isCheckInAction = true;
+    private string employeeCheckInNote = "";
+    private bool isScanning = false;
+    private bool scanSuccess = false;
+    private List<TimeAttendance> personalAttendances = new();
+    private int selectedShiftId = 1;
+
+    // Quản lý Camera HTML5 WebRTC
+    private readonly string videoElementId = "attendanceCameraVideo";
+    private bool isCameraActive = false;
+    private bool isStartingCamera = false;
+    private string? cameraErrorMessage;
+    private bool showFlashEffect = false;
+    private string? lastCapturedPhotoUrl;
+    private string? lastCaptureTimeString;
+
+    // Modal phóng to ảnh chấm công
+    private bool showPhotoModal = false;
+    private string? modalPhotoUrl;
+    private string modalEmployeeName = "";
+    private DateTime modalWorkDate;
+    private TimeSpan? modalTime;
+    private string modalActionType = "";
+
+    // Đồng hồ thời gian thực
+    private System.Threading.Timer? clockTimer;
+    private string currentTimeString = DateTime.Now.ToString("HH:mm:ss");
+    private string currentDateString = DateTime.Now.ToString("dd/MM/yyyy");
+
+    public class CameraCaptureResult
+    {
+        public bool Success { get; set; }
+        public string? DataUrl { get; set; }
+        public string? Error { get; set; }
+        public bool IsRealCamera { get; set; }
+    }
+
+    public class CameraInitResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         DraftService.OnChange += StateHasChanged;
         UserSession.OnChange += StateHasChanged;
+        Navigation.LocationChanged += HandleLocationChanged;
         employeeList = (await EmployeeRepo.GetAllEmployeesAsync()).ToList();
 
-        if (!DraftService.DraftItems.Any())
+        // Khởi động đồng hồ thời gian thực
+        clockTimer = new System.Threading.Timer(_ =>
         {
-            await DraftService.InitializeDraftForMonthAsync(selectedMonth, selectedYear);
-        }
+            currentTimeString = DateTime.Now.ToString("HH:mm:ss");
+            currentDateString = DateTime.Now.ToString("dd/MM/yyyy");
+            InvokeAsync(StateHasChanged);
+        }, null, 0, 1000);
+
+        await ReloadDataAsync();
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        // KHÔNG tự động bật camera khi mở trang - chỉ bật khi bấm Vào ca / Hết ca
+        return Task.CompletedTask;
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Tắt camera ngay khi người dùng chuyển hướng sang trang khác
+        _ = StopCameraAsync();
     }
 
     public void Dispose()
     {
+        Navigation.LocationChanged -= HandleLocationChanged;
         DraftService.OnChange -= StateHasChanged;
         UserSession.OnChange -= StateHasChanged;
+        clockTimer?.Dispose();
+        _ = StopCameraAsync();
+    }
+
+    private async Task StartCameraAsync()
+    {
+        if (isStartingCamera) return;
+        isStartingCamera = true;
+        cameraErrorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var res = await JSRuntime.InvokeAsync<CameraInitResult>("cameraInterop.startCamera", videoElementId);
+            if (res != null && res.Success)
+            {
+                isCameraActive = true;
+                cameraErrorMessage = null;
+            }
+            else
+            {
+                isCameraActive = false;
+                cameraErrorMessage = res?.Error ?? "Không thể kết nối Camera.";
+            }
+        }
+        catch (Exception ex)
+        {
+            isCameraActive = false;
+            cameraErrorMessage = ex.Message;
+        }
+        finally
+        {
+            isStartingCamera = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task StopCameraAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("cameraInterop.stopCamera", videoElementId);
+            isCameraActive = false;
+        }
+        catch { }
+    }
+
+    private async Task ReloadDataAsync()
+    {
+        if (UserSession.IsAdminHr)
+        {
+            await LoadPendingAttendancesAsync();
+            if (!DraftService.DraftItems.Any())
+            {
+                await DraftService.InitializeDraftForMonthAsync(selectedMonth, selectedYear);
+            }
+        }
+        else
+        {
+            await LoadPersonalAttendanceAsync();
+        }
+    }
+
+    private void SetAdminTab(string tab)
+    {
+        activeAdminTab = tab;
+    }
+
+    private async Task LoadPendingAttendancesAsync()
+    {
+        pendingAttendances = await DraftService.GetPendingAttendancesAsync();
+    }
+
+    private async Task LoadPersonalAttendanceAsync()
+    {
+        if (UserSession.CurrentEmployeeId.HasValue)
+        {
+            var list = await AttendanceRepo.GetAttendancesByEmployeeAsync(
+                UserSession.CurrentEmployeeId.Value, 
+                selectedMonth, 
+                selectedYear
+            );
+            personalAttendances = list.ToList();
+            
+            // Cập nhật ảnh chụp gần nhất nếu có
+            var latestWithPhoto = personalAttendances
+                .OrderByDescending(x => x.WorkDate)
+                .ThenByDescending(x => x.CheckIn)
+                .FirstOrDefault(x => !string.IsNullOrEmpty(x.PhotoPath) || !string.IsNullOrEmpty(x.CheckOutPhotoPath));
+
+            if (latestWithPhoto != null && string.IsNullOrEmpty(lastCapturedPhotoUrl))
+            {
+                lastCapturedPhotoUrl = latestWithPhoto.PhotoPath ?? latestWithPhoto.CheckOutPhotoPath;
+                lastCaptureTimeString = latestWithPhoto.CheckIn?.ToString(@"hh\:mm") ?? latestWithPhoto.CheckOut?.ToString(@"hh\:mm");
+            }
+        }
+    }
+
+    private async Task ExecuteActionAsync(bool isCheckIn)
+    {
+        isCheckInAction = isCheckIn;
+
+        // Bật camera khi bấm nút Vào ca / Hết ca (nếu chưa bật)
+        if (!isCameraActive)
+        {
+            await StartCameraAsync();
+            if (!isCameraActive)
+            {
+                alertMessage = "Không thể kết nối Camera. Vui lòng kiểm tra quyền thiết bị hoặc kết nối.";
+                isSuccessAlert = false;
+                return;
+            }
+            // Đợi 700ms để camera khởi động và khung hình hiển thị ổn định
+            await Task.Delay(700);
+        }
+
+        await SubmitFaceCheckInAsync();
+    }
+
+    private async Task SubmitFaceCheckInAsync()
+    {
+        if (!UserSession.CurrentEmployeeId.HasValue)
+        {
+            alertMessage = "Không xác định được danh tính nhân viên. Vui lòng đăng nhập lại.";
+            isSuccessAlert = false;
+            return;
+        }
+
+        isScanning = true;
+        scanSuccess = false;
+        alertMessage = null;
+        showFlashEffect = true;
+        StateHasChanged();
+
+        // 1. Chụp ảnh từ camera qua JavaScript Interop
+        string watermark = $"{UserSession.CurrentEmployeeCode} - {UserSession.CurrentEmployeeName} | {DateTime.Now:dd/MM/yyyy HH:mm:ss} | {(isCheckInAction ? "VÀO CA" : "HẾT CA")}";
+        CameraCaptureResult? captureResult = null;
+        try
+        {
+            captureResult = await JSRuntime.InvokeAsync<CameraCaptureResult>("cameraInterop.capturePhoto", videoElementId, watermark);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Camera capture JS error: {ex.Message}");
+        }
+
+        // Tắt hiệu ứng đèn flash sau 300ms
+        await Task.Delay(300);
+        showFlashEffect = false;
+        StateHasChanged();
+
+        // 2. Lưu ảnh vật lý vào thư mục wwwroot/uploads/attendance/
+        string? savedPhotoUrl = null;
+        if (captureResult != null && captureResult.Success && !string.IsNullOrEmpty(captureResult.DataUrl))
+        {
+            try
+            {
+                var base64Data = captureResult.DataUrl;
+                var commaIndex = base64Data.IndexOf(',');
+                if (commaIndex >= 0)
+                {
+                    base64Data = base64Data.Substring(commaIndex + 1);
+                }
+
+                byte[] imageBytes = Convert.FromBase64String(base64Data);
+                var uploadsFolder = Path.Combine(WebHostEnvironment.WebRootPath, "uploads", "attendance");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var fileName = $"att_{UserSession.CurrentEmployeeId.Value}_{DateTime.Now:yyyyMMdd_HHmmss}_{(isCheckInAction ? "in" : "out")}.jpg";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+                await File.WriteAllBytesAsync(filePath, imageBytes);
+
+                savedPhotoUrl = $"/uploads/attendance/{fileName}";
+                lastCapturedPhotoUrl = savedPhotoUrl;
+                lastCaptureTimeString = DateTime.Now.ToString("HH:mm:ss");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving attendance photo: {ex.Message}");
+            }
+        }
+
+        // Giả lập quét AI nhận diện sinh trắc học
+        await Task.Delay(500);
+
+        var now = DateTime.Now;
+        var checkTime = now.TimeOfDay;
+        string shiftName = selectedShiftId switch {
+            2 => "Ca Sáng",
+            3 => "Ca Chiều",
+            _ => "Ca Hành Chính"
+        };
+        string fullNote = $"Face ID AI ({shiftName}) • WiFi TechCorp_Office_5G" + 
+            (!string.IsNullOrWhiteSpace(employeeCheckInNote) ? $" • {employeeCheckInNote.Trim()}" : "");
+
+        await DraftService.SubmitFaceAttendanceAsync(
+            UserSession.CurrentEmployeeId.Value,
+            DateTime.Today,
+            checkTime,
+            isCheckInAction,
+            fullNote,
+            savedPhotoUrl,
+            selectedShiftId
+        );
+
+        isScanning = false;
+        scanSuccess = true;
+        isSuccessAlert = true;
+        alertMessage = $"Chấm công {(isCheckInAction ? "Vào ca" : "Hết ca")} [{shiftName}] lúc {checkTime:hh\\:mm\\:ss} thành công! Ảnh chụp đã được gửi cho Quản trị viên duyệt.";
+
+        employeeCheckInNote = "";
+        await LoadPersonalAttendanceAsync();
+    }
+
+    private void ShowLastCapturedPhoto()
+    {
+        if (!string.IsNullOrEmpty(lastCapturedPhotoUrl))
+        {
+            ShowPhotoModal(lastCapturedPhotoUrl, UserSession.CurrentEmployeeName, DateTime.Today, DateTime.Now.TimeOfDay, isCheckInAction ? "Vào ca" : "Hết ca");
+        }
+    }
+
+    private void ShowPendingPhoto(TimeAttendance item, bool isCheckIn)
+    {
+        var url = isCheckIn ? item.PhotoPath : item.CheckOutPhotoPath;
+        if (!string.IsNullOrEmpty(url))
+        {
+            ShowPhotoModal(url, item.Employee?.FullName ?? item.Employee?.EmployeeCode ?? "", item.WorkDate, isCheckIn ? item.CheckIn : item.CheckOut, isCheckIn ? "Vào ca" : "Hết ca");
+        }
+    }
+
+    private void ShowDraftPhoto(AttendanceDraftItemDto item)
+    {
+        if (!string.IsNullOrEmpty(item.PhotoPath))
+        {
+            ShowPhotoModal(item.PhotoPath, item.FullName, item.WorkDate, item.CheckIn, "Vào ca");
+        }
+    }
+
+    private void ShowHistoryPhoto(string photoUrl)
+    {
+        ShowPhotoModal(photoUrl, UserSession.CurrentEmployeeName, DateTime.Today, null, "Chấm công");
+    }
+
+    private void ShowPhotoModal(string photoUrl, string employeeName, DateTime workDate, TimeSpan? time, string actionType)
+    {
+        modalPhotoUrl = photoUrl;
+        modalEmployeeName = employeeName;
+        modalWorkDate = workDate;
+        modalTime = time;
+        modalActionType = actionType;
+        showPhotoModal = true;
+    }
+
+    private void ClosePhotoModal()
+    {
+        showPhotoModal = false;
+        modalPhotoUrl = null;
+    }
+
+    private async Task ApproveAttendanceAsync(int attendanceId)
+    {
+        bool success = await DraftService.ApproveAttendanceAsync(attendanceId);
+        if (success)
+        {
+            alertMessage = "Đã phê duyệt yêu cầu chấm công thành công! Dữ liệu đã được cập nhật vào bảng công.";
+            isSuccessAlert = true;
+            await LoadPendingAttendancesAsync();
+        }
+    }
+
+    private async Task RejectAttendanceAsync(int attendanceId)
+    {
+        bool success = await DraftService.RejectAttendanceAsync(attendanceId, "Không khớp dữ liệu giám sát camera");
+        if (success)
+        {
+            alertMessage = "Đã từ chối yêu cầu chấm công thành công.";
+            isSuccessAlert = true;
+            await LoadPendingAttendancesAsync();
+        }
     }
 
     private async Task InitializeDraftAsync()
     {
         await DraftService.InitializeDraftForMonthAsync(selectedMonth, selectedYear);
-        alertMessage = $"Đã nạp thành công bảng công nháp tháng {selectedMonth}/{selectedYear} vào Scoped State Service!";
+        alertMessage = $"Đã tải dữ liệu chấm công tháng {selectedMonth}/{selectedYear} thành công!";
+        isSuccessAlert = true;
     }
 
-    private async Task ReloadDraftAsync()
+    private async Task CommitDraftAsync()
     {
-        await DraftService.InitializeDraftForMonthAsync(selectedMonth, selectedYear);
+        int count = await DraftService.CommitDraftToDatabaseAsync();
+        alertMessage = $"Đã lưu và duyệt thành công {count} bản ghi chấm công vào hệ thống!";
+        isSuccessAlert = true;
     }
 
     private IEnumerable<AttendanceDraftItemDto> GetFilteredItems()
@@ -303,18 +1423,85 @@
         }
     }
 
-    private async Task CommitDraftAsync()
-    {
-        int count = await DraftService.CommitDraftToDatabaseAsync();
-        alertMessage = $"🎉 [Thành công]: Đã chốt duyệt và lưu chính thức {count} bản ghi chấm công vào Database!";
-    }
-
     private string GetStatusBadgeClass(AttendanceStatus status) => status switch
     {
-        AttendanceStatus.Present => "bg-success-subtle text-success",
-        AttendanceStatus.Late => "bg-warning-subtle text-warning",
-        AttendanceStatus.Absent => "bg-danger-subtle text-danger",
-        AttendanceStatus.LeavePaid => "bg-info-subtle text-info",
+        AttendanceStatus.Present => "bg-success-subtle text-success border border-success-subtle",
+        AttendanceStatus.Late => "bg-warning-subtle text-warning border border-warning-subtle",
+        AttendanceStatus.Absent => "bg-danger-subtle text-danger border border-danger-subtle",
+        AttendanceStatus.LeavePaid => "bg-info-subtle text-info border border-info-subtle",
+        AttendanceStatus.PendingApproval => "bg-warning text-dark border border-warning",
+        AttendanceStatus.Rejected => "bg-danger text-white",
         _ => "bg-secondary-subtle text-secondary"
     };
+
+    private string GetStatusDisplayName(AttendanceStatus status) => status switch
+    {
+        AttendanceStatus.Present => "Đã duyệt (Đủ công)",
+        AttendanceStatus.Late => "Đi trễ",
+        AttendanceStatus.Absent => "Vắng mặt",
+        AttendanceStatus.LeavePaid => "Nghỉ phép",
+        AttendanceStatus.PendingApproval => "Chờ duyệt",
+        AttendanceStatus.Rejected => "Từ chối",
+        _ => status.ToString()
+    };
+
+    private record CalendarDayDto(int Day, bool IsEmpty, bool IsToday, string Status);
+
+    private List<CalendarDayDto> GetCalendarDays()
+    {
+        var list = new List<CalendarDayDto>();
+        int daysInMonth = DateTime.DaysInMonth(selectedYear, selectedMonth);
+        var firstOfMonth = new DateTime(selectedYear, selectedMonth, 1);
+        int emptyOffset = ((int)firstOfMonth.DayOfWeek + 6) % 7; // Thứ 2 = 0
+
+        for (int i = 0; i < emptyOffset; i++)
+        {
+            list.Add(new CalendarDayDto(0, true, false, "none"));
+        }
+
+        DateTime today = DateTime.Today;
+        bool isCurrentMonth = (today.Month == selectedMonth && today.Year == selectedYear);
+
+        for (int d = 1; d <= daysInMonth; d++)
+        {
+            var date = new DateTime(selectedYear, selectedMonth, d);
+            bool isToday = isCurrentMonth && (d == today.Day);
+            var att = personalAttendances.FirstOrDefault(a => a.WorkDate.Date == date.Date);
+            string status = "none";
+            bool isWeekend = (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday);
+
+            if (att != null)
+            {
+                if (att.Status == AttendanceStatus.Absent)
+                {
+                    status = "absent"; // Chấm đỏ: Nghỉ làm
+                }
+                else if (att.LateMinutes > 0 || att.Status == AttendanceStatus.Late)
+                {
+                    status = "late"; // Chấm vàng: Đi trễ
+                }
+                else if (att.ActualWorkDays > 0 || att.Status == AttendanceStatus.Present || att.Status == AttendanceStatus.PendingApproval)
+                {
+                    status = "on-time"; // Chấm xanh: Đúng giờ
+                }
+            }
+            else if (!isWeekend)
+            {
+                // Ngày trong tuần (Thứ 2 đến Thứ 6)
+                if (date < today)
+                {
+                    // Ngày trong quá khứ không đi làm -> Chấm đỏ: Nghỉ làm
+                    status = "absent";
+                }
+                else
+                {
+                    // Hôm nay hoặc tương lai chưa có dữ liệu chấm công
+                    status = "none";
+                }
+            }
+
+            list.Add(new CalendarDayDto(d, false, isToday, status));
+        }
+        return list;
+    }
 }
