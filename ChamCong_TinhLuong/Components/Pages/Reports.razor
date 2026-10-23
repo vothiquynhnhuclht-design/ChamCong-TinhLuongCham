@@ -8,8 +8,29 @@
 <PageTitle>Báo Cáo & Phân Tích Lương - HRM Enterprise</PageTitle>
 
 <div class="container-fluid py-3">
-    <!-- Page Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    @if (UserSession.IsEmployee)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white my-4">
+            <i class="bi bi-shield-lock-fill fs-1 text-danger d-block mb-3"></i>
+            <h4 class="fw-bold text-dark">Khu Vực Báo Cáo Dành Riêng Cho Quản Trị / Kế Toán</h4>
+            <p class="text-muted">
+                Trang Tổng hợp Báo cáo Quỹ lương & Nhân sự chỉ dành cho tài khoản <strong>Quản trị viên / Bộ phận Kế toán - Nhân sự</strong>.<br />
+                Tài khoản nhân viên <strong>@UserSession.CurrentEmployeeCode - @UserSession.CurrentEmployeeName</strong> không có quyền truy cập trang này.
+            </p>
+            <div class="mt-3">
+                <a href="payroll" class="btn btn-primary me-2">
+                    <i class="bi bi-receipt me-1"></i> Xem Phiếu Lương Của Tôi
+                </a>
+                <a href="/" class="btn btn-outline-secondary">
+                    <i class="bi bi-house me-1"></i> Về Trang Tổng Quan
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Page Header -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h3 class="fw-bold text-dark mb-1">
                 <i class="bi bi-bar-chart-line text-primary me-2"></i>Báo Cáo Quỹ Lương & Nhân Sự
@@ -219,6 +240,7 @@
             </table>
         </div>
     </div>
+    }
 </div>
 
 @code {
@@ -233,6 +255,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (UserSession.IsEmployee) return;
+
         allEmployees = (await EmployeeRepo.GetAllEmployeesAsync(includeInactive: true)).ToList();
         departments = (await DepartmentRepo.GetAllDepartmentsAsync()).ToList();
         await LoadReportDataAsync();

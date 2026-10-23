@@ -2,12 +2,7 @@ using ChamCong_TinhLuong.CoreBusiness.Models;
 
 namespace ChamCong_TinhLuong.Plugins.DataStore.InMemory;
 
-/// <summary>
-/// Lưu trữ dữ liệu trong bộ nhớ (In-Memory) thuần túy phục vụ kiểm thử (Unit Testing / Mock).
-/// Đã loại bỏ hoàn toàn các đoạn code tạo dữ liệu giả lập thủ công.
-/// Toàn bộ dữ liệu nghiệp vụ của hệ thống được quản lý và lưu trữ trực tiếp trên SQL Server
-/// thông qua ChamCongDbContext và file kịch bản ChamCong_TinhLuong_Database.sql.
-/// </summary>
+
 public class InMemoryDataStore
 {
     public List<Department> Departments { get; set; } = new();
