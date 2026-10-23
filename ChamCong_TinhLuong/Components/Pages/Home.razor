@@ -1,495 +1,773 @@
 @page "/"
 @inject IEmployeeRepository EmployeeRepo
+@inject IAttendanceRepository AttendanceRepo
+@inject IDepartmentRepository DepartmentRepo
 @inject IPayslipRepository PayslipRepo
 @inject UserSessionService UserSession
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>Tổng Quan - HRM Enterprise</PageTitle>
 
-<div class="dashboard-page-wrapper py-2">
-    <!-- 1. Top Welcome Banner Card -->
-    <div class="card border-0 shadow-xs rounded-4 bg-white mb-4 welcome-card overflow-hidden">
-        <div class="card-body p-4 p-lg-4 d-flex flex-wrap align-items-center justify-content-between gap-3 position-relative">
-            <!-- Left: Greeting + Big Bold Name -->
-            <div>
-                <div class="d-flex align-items-center gap-2 text-slate-500 small mb-1.5 fw-medium">
-                    <span class="fs-5">👋</span> Xin chào,
-                    <span class="badge rounded-pill bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 fw-semibold" style="font-size: 11px;">
-                        <span class="status-dot-pulse bg-emerald-500 me-1"></span> Hệ thống đang hoạt động
-                    </span>
-                </div>
-                <h2 class="fw-bolder text-slate-900 mb-1.5 tracking-tight welcome-user-name">
-                    @(string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Võ Thị Quỳnh Như" : UserSession.CurrentEmployeeName)
-                </h2>
-                <p class="text-slate-400 small mb-0 fs-6">Chúc bạn một ngày làm việc hiệu quả và quản trị nhân sự thuận lợi!</p>
-            </div>
+<div class="dashboard-employee-wrapper py-2">
 
-            <!-- Middle/Right: Professional Flat Vector Art (Woman at Desk with Laptop & 3D Charts) -->
-            <div class="welcome-illustration-art d-none d-md-block pe-lg-4">
-                <svg width="260" height="115" viewBox="0 0 240 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Background Soft Glow -->
-                    <circle cx="160" cy="55" r="50" fill="#EFF6FF" />
-                    <!-- Desk & Plants -->
-                    <rect x="70" y="85" width="130" height="4" rx="2" fill="#CBD5E1" />
-                    <path d="M185 85C185 65 195 55 200 50C205 55 215 65 215 85" fill="#38BDF8" opacity="0.6" />
-                    <circle cx="200" cy="45" r="5" fill="#0284C7" />
-                    <!-- Character (Woman working on Laptop) -->
-                    <!-- Body / Blazer -->
-                    <path d="M125 65C125 50 135 45 145 45C155 45 165 50 165 65L170 85H120L125 65Z" fill="#2563EB" />
-                    <!-- Inner Shirt -->
-                    <path d="M140 45L145 60L150 45Z" fill="#FFFFFF" />
-                    <!-- Head & Hair -->
-                    <circle cx="145" cy="32" r="11" fill="#FBD5BD" />
-                    <path d="M136 30C136 20 142 16 148 16C156 16 158 22 156 30C153 28 148 28 144 32Z" fill="#0F172A" />
-                    <path d="M136 30C134 38 136 46 140 50" stroke="#0F172A" stroke-width="4" stroke-linecap="round" />
-                    <!-- Laptop on Desk -->
-                    <rect x="135" y="72" width="28" height="15" rx="2" fill="#1E293B" />
-                    <rect x="138" y="74" width="22" height="10" rx="1" fill="#93C5FD" />
-                    <line x1="130" y1="86" x2="168" y2="86" stroke="#64748B" stroke-width="3" stroke-linecap="round" />
-                    <!-- Floating 3D Chart Bars in background -->
-                    <rect x="40" y="45" width="18" height="40" rx="3" fill="#BFDBFE" opacity="0.7" />
-                    <rect x="62" y="30" width="18" height="55" rx="3" fill="#93C5FD" opacity="0.8" />
-                    <rect x="84" y="15" width="18" height="70" rx="3" fill="#3B82F6" />
-                </svg>
+    @if (UserSession.IsAdminHr)
+    {
+        <!-- Chuyển đổi góc nhìn dành cho Quản trị viên / Kiểm thử đồ án -->
+        <div class="d-flex align-items-center justify-content-between p-2.5 px-3 mb-3 bg-white border rounded-3 shadow-2xs">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                    <i class="bi bi-shield-check me-1"></i>Tài khoản Quản trị
+                </span>
+                <span class="text-muted small">Bạn đang xem giao diện Tổng quan theo phân quyền:</span>
             </div>
-
-            <!-- Top Right: Period Selector Dropdown Button -->
-            <div class="position-absolute top-0 end-0 p-3.5">
-                <button class="btn btn-sm btn-outline-secondary bg-white text-slate-700 py-1.5 px-3 rounded-3 d-flex align-items-center gap-1.5 shadow-2xs border-slate-200 font-medium period-select-btn">
-                    <i class="bi bi-calendar3 text-primary"></i>
-                    <span>Kỳ lương: <strong>Tháng @selectedPeriod</strong></span>
-                    <i class="bi bi-chevron-down text-slate-400 ms-1" style="font-size: 10px;"></i>
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn @(viewMode == "Employee" ? "btn-primary" : "btn-outline-secondary") px-3 fw-semibold" @onclick='() => viewMode = "Employee"'>
+                    <i class="bi bi-person me-1"></i>Giao diện Nhân viên
+                </button>
+                <button type="button" class="btn @(viewMode == "Admin" ? "btn-primary" : "btn-outline-secondary") px-3 fw-semibold" @onclick='() => viewMode = "Admin"'>
+                    <i class="bi bi-bar-chart-steps me-1"></i>Giao diện Quản trị / HR
                 </button>
             </div>
         </div>
-    </div>
+    }
 
-    <!-- 2. Four KPI Metric Cards Row -->
-    <div class="row g-4 mb-4">
-        <!-- Card 1: Tổng nhân sự -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-xs rounded-4 bg-white p-4 kpi-card h-100">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <span class="text-xs fw-bold text-slate-500 text-uppercase tracking-wider">Tổng nhân sự</span>
-                    <div class="kpi-icon-circle bg-blue-50 text-primary">
-                        <i class="bi bi-people-fill"></i>
-                    </div>
+    @if (viewMode == "Employee" || UserSession.IsEmployee)
+    {
+        <!-- ========================================================================================= -->
+        <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN NHÂN VIÊN (CHUẨN 100% THEO THIẾT KẾ ĐẶC TẢ) -->
+        <!-- ========================================================================================= -->
+
+        <!-- 1. BANNER CHÀO MỪNG (GREETING BANNER) -->
+        <div class="card border-0 rounded-4 mb-4 overflow-hidden shadow-xs welcome-employee-banner">
+            <div class="card-body p-4 p-lg-4 d-flex align-items-center justify-content-between position-relative">
+                <div class="z-1">
+                    <h2 class="fw-bolder text-slate-900 mb-1.5 tracking-tight banner-greeting-title">
+                        Xin chào, @(string.IsNullOrEmpty(currentEmployee?.FullName) ? (string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Nguyễn Thị Mai" : UserSession.CurrentEmployeeName) : currentEmployee.FullName)!
+                    </h2>
+                    <p class="text-slate-500 mb-0 small fs-6">
+                        Chúc bạn một ngày làm việc hiệu quả và nhiều năng lượng!
+                    </p>
                 </div>
-                <div class="d-flex align-items-baseline gap-2 mb-2">
-                    <span class="kpi-number text-slate-900">@totalEmployees</span>
-                    <span class="text-slate-400 small fw-medium">nhân sự</span>
-                </div>
-                <div class="d-flex align-items-center text-emerald-600 small fw-semibold" style="font-size: 12.5px;">
-                    <i class="bi bi-arrow-up-right me-1"></i>
-                    <span>Tăng 100% so với tháng trước</span>
+
+                <!-- Vector Illustration (Woman working at desk with laptop and plant) -->
+                <div class="welcome-employee-art d-none d-md-block pe-lg-3">
+                    <svg width="220" height="110" viewBox="0 0 220 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="150" cy="55" r="45" fill="#F1F5F9" opacity="0.8" />
+                        <!-- Plant -->
+                        <path d="M185 85C185 68 193 60 198 56C203 60 211 68 211 85" fill="#38BDF8" opacity="0.7" />
+                        <line x1="198" y1="56" x2="198" y2="85" stroke="#0284C7" stroke-width="2" />
+                        <!-- Desk -->
+                        <rect x="55" y="86" width="145" height="4" rx="2" fill="#CBD5E1" />
+                        <!-- Character Body -->
+                        <path d="M115 65C115 52 125 46 135 46C145 46 155 52 155 65L160 86H110L115 65Z" fill="#3B82F6" />
+                        <!-- Head & Hair -->
+                        <circle cx="135" cy="33" r="11" fill="#FBD5BD" />
+                        <path d="M126 31C126 21 132 17 138 17C146 17 148 23 146 31C143 29 138 29 134 33Z" fill="#1E293B" />
+                        <path d="M126 31C124 39 126 47 130 51" stroke="#1E293B" stroke-width="4" stroke-linecap="round" />
+                        <!-- Laptop -->
+                        <rect x="125" y="73" width="28" height="13" rx="2" fill="#0F172A" />
+                        <rect x="128" y="75" width="22" height="9" rx="1" fill="#BAE6FD" />
+                        <line x1="120" y1="86" x2="158" y2="86" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" />
+                        <!-- Floating Soft Lilac Circles -->
+                        <circle cx="50" cy="40" r="14" fill="#E9D5FF" opacity="0.6" />
+                        <circle cx="75" cy="25" r="7" fill="#FBCFE8" opacity="0.6" />
+                    </svg>
                 </div>
             </div>
         </div>
 
-        <!-- Card 2: Kỳ lương hoạt động -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-xs rounded-4 bg-white p-4 kpi-card h-100">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <span class="text-xs fw-bold text-slate-500 text-uppercase tracking-wider">Kỳ lương hoạt động</span>
-                    <div class="kpi-icon-circle bg-purple-50 text-purple">
-                        <i class="bi bi-calendar3"></i>
-                    </div>
-                </div>
-                <div class="d-flex align-items-baseline gap-2 mb-2">
-                    <span class="kpi-number text-slate-900">@selectedPeriod</span>
-                    <span class="kpi-status-badge badge-neutral">22 công</span>
-                </div>
-                <div class="text-slate-400 small" style="font-size: 12.5px;">
-                    <i class="bi bi-clock-history me-1"></i> Chu kỳ: 01/10 - 31/10/2026
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 3: Phiếu lương đã lập -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-xs rounded-4 bg-white p-4 kpi-card h-100">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <span class="text-xs fw-bold text-slate-500 text-uppercase tracking-wider">Phiếu lương đã lập</span>
-                    <div class="kpi-icon-circle bg-emerald-50 text-emerald-600">
-                        <i class="bi bi-receipt"></i>
-                    </div>
-                </div>
-                <div class="d-flex align-items-baseline gap-2 mb-2">
-                    <span class="kpi-number text-slate-900">@totalPayslips <span class="fs-5 fw-normal text-slate-400">/ @totalEmployees</span></span>
-                    <span class="kpi-status-badge badge-active">100%</span>
-                </div>
-                <div class="text-slate-500 small" style="font-size: 12.5px;">
-                    Tổng chi: <strong class="text-slate-800 fw-bold">@totalNetSalary.ToString("N0") ₫</strong>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 4: Trạng thái sổ lương -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-xs rounded-4 bg-white p-4 kpi-card h-100">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <span class="text-xs fw-bold text-slate-500 text-uppercase tracking-wider">Trạng thái sổ lương</span>
-                    <div class="kpi-icon-circle bg-amber-50 text-amber-600">
-                        <i class="bi bi-file-earmark-check"></i>
-                    </div>
-                </div>
-                <div class="d-flex align-items-baseline gap-2 mb-2">
-                    <span class="kpi-number text-amber-600" style="font-size: 1.5rem;">Bản Nháp (Draft)</span>
-                </div>
-                <div class="text-slate-400 small" style="font-size: 12.5px;">
-                    <i class="bi bi-pencil-square me-1"></i> Sẵn sàng cập nhật & duyệt
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3. Middle Charts Row: 50% - 50% Grid (Cơ cấu chi phí lương & Xu hướng quỹ lương) -->
-    <div class="row g-4">
-        <!-- Col Left (6/12): Cơ Cấu Chi Phí Lương (Donut Chart) -->
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100 d-flex flex-column justify-content-between main-chart-card">
-                <div>
-                    <!-- Header with Period Dropdown -->
-                    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-4">
-                        <div class="d-flex align-items-center gap-2.5">
-                            <div class="chart-header-icon bg-blue-50 text-primary">
-                                <i class="bi bi-pie-chart-fill"></i>
+        <!-- 2. BA THẺ THAO TÁC NHANH (3 QUICK ACCESS CARDS) -->
+        <div class="row g-3 mb-4">
+            <!-- Card 1: Chấm công -->
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick='() => Navigation.NavigateTo("/attendance")'>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="action-icon-box bg-blue-50 text-primary">
+                                <i class="bi bi-clock"></i>
                             </div>
                             <div>
-                                <h5 class="fw-bold text-slate-900 mb-0">Cơ cấu chi phí lương</h5>
-                                <div class="text-slate-400 small" style="font-size: 12px;">Phân bổ chi tiết ngân sách lương tháng 10/2026</div>
+                                <h6 class="fw-bold text-slate-900 mb-0.5 action-card-title">Chấm công</h6>
+                                <p class="text-slate-400 small mb-0" style="font-size: 12.5px;">Xem lịch làm việc, check-in/out</p>
                             </div>
                         </div>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary bg-white text-slate-600 py-1.5 px-3 rounded-3 d-flex align-items-center gap-1.5 border-slate-200" style="font-size: 12px;">
-                                <span>Tháng 10/2026</span>
-                                <i class="bi bi-chevron-down text-slate-400" style="font-size: 10px;"></i>
+                        <i class="bi bi-arrow-right text-slate-400 fs-5 action-arrow"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Đơn xin nghỉ phép -->
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick='() => Navigation.NavigateTo("/attendance")'>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="action-icon-box bg-purple-50 text-purple-600">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-slate-900 mb-0.5 action-card-title">Đơn xin nghỉ phép</h6>
+                                <p class="text-slate-400 small mb-0" style="font-size: 12.5px;">Tạo đơn nghỉ, theo dõi trạng thái</p>
+                            </div>
+                        </div>
+                        <i class="bi bi-arrow-right text-slate-400 fs-5 action-arrow"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Xem bảng lương -->
+            <div class="col-12 col-md-4">
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick='() => Navigation.NavigateTo("/payroll")'>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="action-icon-box bg-emerald-50 text-emerald-600">
+                                <i class="bi bi-file-earmark-spreadsheet"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-slate-900 mb-0.5 action-card-title">Xem bảng lương</h6>
+                                <p class="text-slate-400 small mb-0" style="font-size: 12.5px;">Xem thông tin lương, phúc lợi</p>
+                            </div>
+                        </div>
+                        <i class="bi bi-arrow-right text-slate-400 fs-5 action-arrow"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. KHU VỰC NỘI DUNG CHÍNH (8 CỘT TRÁI - 4 CỘT PHẢI) -->
+        <div class="row g-4 mb-4">
+            
+            <!-- CỘT TRÁI (8 CỘT): LỊCH LÀM VIỆC CỦA TÔI & CHÂM NGÔN -->
+            <div class="col-12 col-lg-8">
+                
+                <!-- Card: Lịch làm việc của tôi -->
+                <div class="card border-0 shadow-xs rounded-4 bg-white mb-4 overflow-hidden schedule-main-card">
+                    <!-- Header -->
+                    <div class="card-header bg-white border-bottom py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-calendar-event text-primary fs-5"></i>
+                            <h5 class="fw-bold text-slate-900 mb-0 fs-6">Lịch làm việc của tôi</h5>
+                        </div>
+
+                        <!-- Date Picker / Navigation -->
+                        <div class="d-flex align-items-center gap-1.5">
+                            <span class="badge bg-light text-slate-700 border px-3 py-1.5 rounded-3 fw-medium d-flex align-items-center gap-1.5" style="font-size: 12px;">
+                                <i class="bi bi-calendar3 text-primary"></i>
+                                <span>@GetVietnameseDayName(selectedDate), @selectedDate.ToString("dd/MM/yyyy")</span>
+                            </span>
+                            <button class="btn btn-sm btn-light border p-1 px-2 rounded-2 text-slate-600" title="Ngày trước" @onclick="GoPreviousDay">
+                                <i class="bi bi-chevron-left" style="font-size: 11px;"></i>
+                            </button>
+                            <button class="btn btn-sm btn-light border p-1 px-2 rounded-2 text-slate-600" title="Ngày kế tiếp" @onclick="GoNextDay">
+                                <i class="bi bi-chevron-right" style="font-size: 11px;"></i>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Chart & Legend Container -->
-                    <div class="row align-items-center g-4 my-2">
-                        <!-- Donut SVG on Left -->
-                        <div class="col-12 col-sm-5 text-center">
-                            <div class="donut-container position-relative d-inline-block">
-                                <svg width="170" height="170" viewBox="0 0 100 100">
-                                    <!-- Background track -->
-                                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#f1f5f9" stroke-width="12" />
-                                    <!-- Segment 1: Blue (Basic Salary - 87%) -->
-                                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#2563eb" stroke-width="12"
-                                            stroke-dasharray="207.7 238.8" stroke-dashoffset="0" transform="rotate(-90 50 50)" />
-                                    <!-- Segment 2: Green (Allowance - 11%) -->
-                                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#10b981" stroke-width="12"
-                                            stroke-dasharray="26.3 238.8" stroke-dashoffset="-207.7" transform="rotate(-90 50 50)" />
-                                    <!-- Segment 3: Amber (OT - 2%) -->
-                                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#f59e0b" stroke-width="12"
-                                            stroke-dasharray="4.8 238.8" stroke-dashoffset="-234" transform="rotate(-90 50 50)" />
-                                </svg>
-                                <!-- Center Text -->
-                                <div class="donut-center-text">
-                                    <div class="fw-bold text-slate-900" style="font-size: 14px; letter-spacing: -0.02em;">55.113.637 ₫</div>
-                                    <div class="text-slate-400 fw-medium" style="font-size: 11px;">Tổng quỹ lương</div>
+                    <!-- Card Body (Chia 2 cột: Danh sách 7 ngày bên trái & Timeline bên phải) -->
+                    <div class="card-body p-0">
+                        <div class="row g-0">
+                            
+                            <!-- Danh sách 7 ngày trong tuần (Trái: 35%) -->
+                            <div class="col-12 col-md-5 col-lg-4 border-end bg-slate-50/50 p-2.5">
+                                <div class="d-flex flex-column gap-1.5">
+                                    @foreach (var day in currentWeekDays)
+                                    {
+                                        bool isSelected = day.Date == selectedDate.Date;
+                                        bool isWeekend = day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday;
+
+                                        <div class="schedule-day-item p-2.5 rounded-3 d-flex align-items-center justify-content-between cursor-pointer @(isSelected ? "day-item-active" : "")"
+                                             @onclick="() => SelectDay(day)">
+                                            <div class="d-flex align-items-center gap-2.5">
+                                                <i class="bi bi-calendar @(isSelected ? "text-primary" : "text-slate-400")" style="font-size: 14px;"></i>
+                                                <div>
+                                                    <div class="fw-bold @(isSelected ? "text-primary" : "text-slate-800")" style="font-size: 12.5px;">
+                                                        @GetVietnameseDayName(day)
+                                                    </div>
+                                                    <div class="text-slate-400" style="font-size: 11px;">
+                                                        @day.ToString("dd/MM/yyyy")
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            @if (isSelected)
+                                            {
+                                                <span class="day-active-pill"></span>
+                                            }
+                                        </div>
+                                    }
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Legend Details on Right -->
-                        <div class="col-12 col-sm-7">
-                            <div class="d-flex flex-column gap-3" style="font-size: 13px;">
-                                <!-- Item 1 -->
-                                <div class="p-2.5 rounded-3 bg-slate-50 d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="donut-bullet bullet-blue"></span>
-                                        <span class="text-slate-700 fw-medium">Lương cơ bản công chuẩn</span>
+                            <!-- Timeline chi tiết ngày được chọn (Phải: 65%) -->
+                            <div class="col-12 col-md-7 col-lg-8 p-4">
+                                @if (selectedDate.DayOfWeek == DayOfWeek.Saturday || selectedDate.DayOfWeek == DayOfWeek.Sunday)
+                                {
+                                    <div class="p-4 text-center text-muted my-4">
+                                        <i class="bi bi-cup-hot fs-1 text-slate-300 d-block mb-2"></i>
+                                        <h6 class="fw-bold text-slate-700 mb-1">Nghỉ cuối tuần</h6>
+                                        <p class="small text-slate-400 mb-0">Hôm nay là ngày nghỉ định kỳ theo quy chế làm việc của công ty.</p>
                                     </div>
-                                    <div class="text-end">
-                                        <span class="fw-bold text-slate-900">48.000.000 ₫</span>
-                                        <span class="badge bg-blue-100 text-primary ms-1.5" style="font-size: 11px;">87%</span>
-                                    </div>
-                                </div>
+                                }
+                                else
+                                {
+                                    <div class="schedule-timeline position-relative ps-3">
+                                        
+                                        <!-- Slot 1: Ca Sáng (08:00 - 12:00) -->
+                                        <div class="timeline-slot-item mb-4 position-relative">
+                                            <div class="timeline-time-badge fw-bold text-slate-700">08:00 - 12:00</div>
+                                            <div class="timeline-content-box mt-1.5 p-2.5 rounded-3 bg-slate-50 border border-slate-100">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="status-circle-dot bg-primary"></span>
+                                                    <span class="fw-bold text-slate-900 small">Làm việc tại văn phòng</span>
+                                                </div>
+                                                <div class="text-slate-400 small mt-1 ms-3.5" style="font-size: 11.5px;">
+                                                    <i class="bi bi-geo-alt me-1"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng Kinh doanh")
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                <!-- Item 2 -->
-                                <div class="p-2.5 rounded-3 bg-slate-50 d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="donut-bullet bullet-green"></span>
-                                        <span class="text-slate-700 fw-medium">Phụ cấp & trách nhiệm</span>
-                                    </div>
-                                    <div class="text-end">
-                                        <span class="fw-bold text-slate-900">6.000.000 ₫</span>
-                                        <span class="badge bg-emerald-100 text-emerald-700 ms-1.5" style="font-size: 11px;">11%</span>
-                                    </div>
-                                </div>
+                                        <!-- Slot 2: Nghỉ trưa (12:00 - 13:00) -->
+                                        <div class="timeline-slot-item mb-4 position-relative">
+                                            <div class="timeline-time-badge fw-bold text-slate-700">12:00 - 13:00</div>
+                                            <div class="timeline-content-box mt-1.5 p-2.5 rounded-3 bg-slate-50 border border-slate-100">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="status-circle-dot bg-emerald-500"></span>
+                                                    <span class="fw-bold text-slate-900 small">Nghỉ trưa</span>
+                                                </div>
+                                                <div class="text-slate-400 small mt-1 ms-3.5" style="font-size: 11.5px;">
+                                                    <i class="bi bi-cup-straw me-1"></i>Căn tin công ty
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                <!-- Item 3 -->
-                                <div class="p-2.5 rounded-3 bg-slate-50 d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="donut-bullet bullet-amber"></span>
-                                        <span class="text-slate-700 fw-medium">Làm thêm giờ (OT 150%)</span>
+                                        <!-- Slot 3: Ca Chiều (13:00 - 17:00) -->
+                                        <div class="timeline-slot-item position-relative">
+                                            <div class="timeline-time-badge fw-bold text-slate-700">13:00 - 17:00</div>
+                                            <div class="timeline-content-box mt-1.5 p-2.5 rounded-3 bg-slate-50 border border-slate-100">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="status-circle-dot bg-purple-600"></span>
+                                                    <span class="fw-bold text-slate-900 small">Làm việc tại văn phòng</span>
+                                                </div>
+                                                <div class="text-slate-400 small mt-1 ms-3.5" style="font-size: 11.5px;">
+                                                    <i class="bi bi-geo-alt me-1"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng Kinh doanh")
+                                                </div>
+                                            </div>
+                                        </div>
+
                                     </div>
-                                    <div class="text-end">
-                                        <span class="fw-bold text-slate-900">1.113.637 ₫</span>
-                                        <span class="badge bg-amber-100 text-amber-700 ms-1.5" style="font-size: 11px;">2%</span>
-                                    </div>
-                                </div>
+
+                                    @if (currentDayAttendance != null)
+                                    {
+                                        <div class="mt-4 p-2.5 rounded-3 bg-emerald-50 border border-emerald-200 text-emerald-800 d-flex align-items-center justify-content-between small">
+                                            <span>
+                                                <i class="bi bi-check-circle-fill me-1 text-emerald-600"></i>
+                                                Đã chấm công: Vào <strong>@(currentDayAttendance.CheckIn.HasValue ? currentDayAttendance.CheckIn.Value.ToString(@"hh\:mm") : "0")</strong> 
+                                                - Ra <strong>@(currentDayAttendance.CheckOut.HasValue ? currentDayAttendance.CheckOut.Value.ToString(@"hh\:mm") : "0")</strong>
+                                            </span>
+                                            <span class="badge bg-emerald-600 text-white">@currentDayAttendance.ActualWorkDays.ToString("0.#") công</span>
+                                        </div>
+                                    }
+                                }
                             </div>
+
                         </div>
                     </div>
                 </div>
 
-                <!-- Footer Summary Line -->
-                <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center text-slate-600 bg-slate-50 p-3 rounded-3" style="font-size: 13px;">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-shield-check text-slate-400"></i>
-                        <span>Khấu trừ nghĩa vụ (BHXH & Thuế TNCN):</span>
+                <!-- Card: Châm ngôn tạo động lực (Motivation Quote Card) -->
+                <div class="card border-0 rounded-4 overflow-hidden quote-motivation-card p-3 p-md-3.5 shadow-xs">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="quote-graphic-icon flex-shrink-0">
+                            <!-- 3D Calendar/Clock icon vector -->
+                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                <rect x="6" y="10" width="36" height="32" rx="8" fill="#F87171" />
+                                <rect x="6" y="10" width="36" height="12" rx="8" fill="#EF4444" />
+                                <circle cx="16" cy="7" r="2.5" fill="#CBD5E1" />
+                                <circle cx="32" cy="7" r="2.5" fill="#CBD5E1" />
+                                <circle cx="34" cy="34" r="10" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2" />
+                                <path d="M34 28V34L38 36" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="quote-text mb-0 fw-semibold text-slate-700 fst-italic">
+                                “Làm việc chăm chỉ hôm nay để chạm đến thành công ngày mai!”
+                            </p>
+                        </div>
                     </div>
-                    <strong class="text-slate-900 fw-bold fs-6">@totalDeductions.ToString("N0") ₫</strong>
                 </div>
+
             </div>
+
+            <!-- CỘT PHẢI (4 CỘT): THÔNG TIN CÁ NHÂN & THÔNG BÁO MỚI NHẤT -->
+            <div class="col-12 col-lg-4">
+                
+                <!-- Card 1: Thông tin cá nhân -->
+                <div class="card border-0 shadow-xs rounded-4 bg-white mb-4 p-4 profile-side-card">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-person text-primary fs-5"></i>
+                        <h5 class="fw-bold text-slate-900 mb-0 fs-6">Thông tin cá nhân</h5>
+                    </div>
+
+                    <!-- Avatar + Name + Role Center -->
+                    <div class="text-center pb-3 border-bottom">
+                        <div class="profile-avatar-large mx-auto mb-2.5">
+                            <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80" 
+                                 alt="Avatar" class="rounded-circle shadow-xs" 
+                                 style="width: 84px; height: 84px; object-fit: cover;" 
+                                 onerror="this.src='https://ui-avatars.com/api/?name=Nguyen+Thi+Mai&background=0D8ABC&color=fff';" />
+                        </div>
+                        <h5 class="fw-bolder text-slate-900 mb-0.5">
+                            @(string.IsNullOrEmpty(currentEmployee?.FullName) ? (string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Nguyễn Thị Mai" : UserSession.CurrentEmployeeName) : currentEmployee.FullName)
+                        </h5>
+                        <p class="text-slate-400 small mb-1">
+                            @(string.IsNullOrEmpty(currentEmployee?.Position) ? "Nhân viên" : currentEmployee.Position)
+                        </p>
+                        <span class="badge bg-light text-slate-600 border px-2.5 py-1 rounded-pill" style="font-size: 11px;">
+                            Mã NV: @(string.IsNullOrEmpty(currentEmployee?.EmployeeCode) ? "0" : currentEmployee.EmployeeCode)
+                        </span>
+                    </div>
+
+                    <!-- Details Rows (Email, Phone, Birth/Join, Address/Dept) -->
+                    <div class="py-3 d-flex flex-column gap-2.5" style="font-size: 13px;">
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-slate-500 d-flex align-items-center gap-2">
+                                <i class="bi bi-envelope text-slate-400"></i>Email
+                            </span>
+                            <span class="text-slate-800 fw-medium text-truncate ms-2" style="max-width: 170px;" title="@currentEmployee?.Email">
+                                @(string.IsNullOrEmpty(currentEmployee?.Email) ? "0" : currentEmployee.Email)
+                            </span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-slate-500 d-flex align-items-center gap-2">
+                                <i class="bi bi-telephone text-slate-400"></i>Số điện thoại
+                            </span>
+                            <span class="text-slate-800 fw-medium">
+                                @(string.IsNullOrEmpty(currentEmployee?.PhoneNumber) ? "0" : currentEmployee.PhoneNumber)
+                            </span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-slate-500 d-flex align-items-center gap-2">
+                                <i class="bi bi-calendar-check text-slate-400"></i>Ngày vào làm
+                            </span>
+                            <span class="text-slate-800 fw-medium">
+                                @(currentEmployee != null ? currentEmployee.JoinDate.ToString("dd/MM/yyyy") : "0")
+                            </span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-slate-500 d-flex align-items-center gap-2">
+                                <i class="bi bi-geo-alt text-slate-400"></i>Phòng ban
+                            </span>
+                            <span class="text-slate-800 fw-medium text-truncate ms-2" style="max-width: 170px;" title="@currentEmployee?.Department?.DepartmentName">
+                                @(currentEmployee?.Department != null ? currentEmployee.Department.DepartmentName : "123 Nguyễn Văn Cừ, Đà Nẵng")
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <!-- Action Button -->
+                    <div class="pt-2">
+                        <button class="btn btn-outline-primary w-100 rounded-3 py-2 fw-semibold text-center d-flex align-items-center justify-content-center gap-1.5" style="font-size: 13px;" @onclick='() => Navigation.NavigateTo("/employees")'>
+                            <span>Xem chi tiết</span>
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 2: Thông báo mới nhất -->
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 announcements-side-card">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-bell text-primary fs-5"></i>
+                            <h5 class="fw-bold text-slate-900 mb-0 fs-6">Thông báo mới nhất</h5>
+                        </div>
+                        <a href="javascript:void(0)" class="text-primary text-decoration-none small fw-semibold" style="font-size: 12px;">
+                            Xem tất cả <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+
+                    <div class="d-flex flex-column gap-3">
+                        
+                        <!-- Item 1: Nghỉ lễ -->
+                        <div class="announcement-item pb-2.5 border-bottom">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="status-circle-dot bg-amber-500 flex-shrink-0"></span>
+                                    <span class="fw-bold text-slate-900" style="font-size: 13px;">Thông báo lịch nghỉ lễ 2/9</span>
+                                </div>
+                                <span class="text-slate-400" style="font-size: 11px;">25/08/2026</span>
+                            </div>
+                            <p class="text-slate-500 mb-0 small mt-1 ms-3.5 text-truncate" style="font-size: 12px;">
+                                Công ty sẽ nghỉ lễ từ ngày 01/09 - 03/09/2026...
+                            </p>
+                        </div>
+
+                        <!-- Item 2: Quy định chấm công -->
+                        <div class="announcement-item pb-2.5 border-bottom">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="status-circle-dot bg-blue-600 flex-shrink-0"></span>
+                                    <span class="fw-bold text-slate-900" style="font-size: 13px;">Cập nhật quy định chấm công</span>
+                                </div>
+                                <span class="text-slate-400" style="font-size: 11px;">20/08/2026</span>
+                            </div>
+                            <p class="text-slate-500 mb-0 small mt-1 ms-3.5 text-truncate" style="font-size: 12px;">
+                                Vui lòng tuân thủ quy định chấm công mới từ...
+                            </p>
+                        </div>
+
+                        <!-- Item 3: Đào tạo nội bộ -->
+                        <div class="announcement-item">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="status-circle-dot bg-emerald-600 flex-shrink-0"></span>
+                                    <span class="fw-bold text-slate-900" style="font-size: 13px;">Lịch đào tạo nội bộ tháng 8</span>
+                                </div>
+                                <span class="text-slate-400" style="font-size: 11px;">10/08/2026</span>
+                            </div>
+                            <p class="text-slate-500 mb-0 small mt-1 ms-3.5 text-truncate" style="font-size: 12px;">
+                                Buổi đào tạo sẽ diễn ra vào 15/08/2026 tại...
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
         </div>
 
-        <!-- Col Right (6/12): Xu Hướng Quỹ Lương (Smooth Line Area Chart) -->
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100 d-flex flex-column justify-content-between main-chart-card">
+    }
+    else
+    {
+        <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN QUẢN TRỊ VIÊN / HR (GIỮ NGUYÊN BẢN ADMIN DASHBOARD) -->
+        <div class="card border-0 shadow-xs rounded-4 bg-white mb-4 p-4">
+            <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <!-- Header with Range Dropdown -->
-                    <div class="d-flex justify-content-between align-items-center pb-3 border-bottom mb-3">
-                        <div class="d-flex align-items-center gap-2.5">
-                            <div class="chart-header-icon bg-emerald-50 text-emerald-600">
-                                <i class="bi bi-graph-up-arrow"></i>
-                            </div>
-                            <div>
-                                <h5 class="fw-bold text-slate-900 mb-0">Xu hướng quỹ lương</h5>
-                                <div class="text-slate-400 small" style="font-size: 12px;">Biến động ngân sách chi trả 6 tháng gần nhất</div>
-                            </div>
-                        </div>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary bg-white text-slate-600 py-1.5 px-3 rounded-3 d-flex align-items-center gap-1.5 border-slate-200" style="font-size: 12px;">
-                                <span>6 tháng gần nhất</span>
-                                <i class="bi bi-chevron-down text-slate-400" style="font-size: 10px;"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Area Line Chart SVG (6 Months: 05/2026 -> 10/2026) -->
-                    <div class="trend-chart-wrapper position-relative py-3">
-                        <svg width="100%" height="200" viewBox="0 0 500 170" preserveAspectRatio="none">
-                            <defs>
-                                <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.30" />
-                                    <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.0" />
-                                </linearGradient>
-                            </defs>
-
-                            <!-- Horizontal Grid Lines -->
-                            <line x1="45" y1="20" x2="490" y2="20" stroke="#F1F5F9" stroke-width="1" stroke-dasharray="4 4" />
-                            <text x="5" y="24" fill="#94A3B8" font-size="10.5" font-weight="500">80 tr</text>
-
-                            <line x1="45" y1="50" x2="490" y2="50" stroke="#F1F5F9" stroke-width="1" stroke-dasharray="4 4" />
-                            <text x="5" y="54" fill="#94A3B8" font-size="10.5" font-weight="500">60 tr</text>
-
-                            <line x1="45" y1="80" x2="490" y2="80" stroke="#F1F5F9" stroke-width="1" stroke-dasharray="4 4" />
-                            <text x="5" y="84" fill="#94A3B8" font-size="10.5" font-weight="500">40 tr</text>
-
-                            <line x1="45" y1="110" x2="490" y2="110" stroke="#F1F5F9" stroke-width="1" stroke-dasharray="4 4" />
-                            <text x="5" y="114" fill="#94A3B8" font-size="10.5" font-weight="500">20 tr</text>
-
-                            <line x1="45" y1="140" x2="490" y2="140" stroke="#E2E8F0" stroke-width="1" />
-                            <text x="25" y="144" fill="#94A3B8" font-size="10.5" font-weight="500">0</text>
-
-                            <!-- Filled Area under Curve -->
-                            <polygon points="55,115 135,105 215,90 295,80 375,70 455,55 455,140 55,140" fill="url(#trendGradient)" />
-
-                            <!-- Smooth Curve Line -->
-                            <polyline points="55,115 135,105 215,90 295,80 375,70 455,55" fill="none" stroke="#2563EB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-
-                            <!-- 6 Data Points (Circles) -->
-                            <circle cx="55" cy="115" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" />
-                            <circle cx="135" cy="105" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" />
-                            <circle cx="215" cy="90" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" />
-                            <circle cx="295" cy="80" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" />
-                            <circle cx="375" cy="70" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.5" />
-                            <!-- Highlighted active point -->
-                            <circle cx="455" cy="55" r="6" fill="#1D4ED8" stroke="#FFFFFF" stroke-width="3" />
-                        </svg>
-
-                        <!-- X-Axis Labels -->
-                        <div class="d-flex justify-content-between text-slate-500 ps-5 pe-3 fw-medium" style="font-size: 11px; margin-top: -4px;">
-                            <span>T05/2026</span>
-                            <span>T06/2026</span>
-                            <span>T07/2026</span>
-                            <span>T08/2026</span>
-                            <span>T09/2026</span>
-                            <span class="text-primary fw-bold">T10/2026</span>
-                        </div>
-                    </div>
+                    <h4 class="fw-bold text-dark mb-1">Bảng Điều Khiển Quản Trị Nhân Sự & Lương</h4>
+                    <p class="text-muted small mb-0">Thống kê toàn bộ chỉ số nhân sự, quỹ lương và kỳ chấm công doanh nghiệp.</p>
                 </div>
+                <button class="btn btn-primary btn-sm rounded-3 px-3 fw-semibold" @onclick='() => viewMode = "Employee"'>
+                    <i class="bi bi-eye me-1"></i>Xem giao diện nhân viên
+                </button>
+            </div>
+        </div>
 
-                <!-- Footer Summary Line -->
-                <div class="border-top pt-3 mt-3 d-flex justify-content-between align-items-center text-slate-600 bg-slate-50 p-3 rounded-3" style="font-size: 13px;">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-info-circle text-slate-400"></i>
-                        <span>Đỉnh chi trả: <strong>55.113.637 ₫</strong> (Tháng 10/2026)</span>
-                    </div>
-                    <span class="badge bg-emerald-100 text-emerald-700 px-2.5 py-1.5 fw-semibold" style="font-size: 12px;">
-                        <i class="bi bi-graph-up me-1"></i> Tăng trưởng ổn định
-                    </span>
+        <div class="row g-4 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                    <span class="text-xs fw-bold text-slate-500 text-uppercase">Tổng nhân sự</span>
+                    <div class="fs-2 fw-bold text-slate-900 mt-2">@totalEmployees</div>
+                    <span class="text-slate-400 small">nhân sự hoạt động</span>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                    <span class="text-xs fw-bold text-slate-500 text-uppercase">Kỳ lương</span>
+                    <div class="fs-2 fw-bold text-slate-900 mt-2">10/2026</div>
+                    <span class="text-emerald-600 small fw-semibold">Đang xử lý</span>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                    <span class="text-xs fw-bold text-slate-500 text-uppercase">Tổng quỹ thực nhận</span>
+                    <div class="fs-3 fw-bold text-slate-900 mt-2">@totalNetSalary.ToString("N0") ₫</div>
+                    <span class="text-slate-400 small">Chi trả tháng 10/2026</span>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                    <span class="text-xs fw-bold text-slate-500 text-uppercase">Khấu trừ trích nộp</span>
+                    <div class="fs-3 fw-bold text-slate-900 mt-2">@totalDeductions.ToString("N0") ₫</div>
+                    <span class="text-slate-400 small">Bảo hiểm & Thuế</span>
                 </div>
             </div>
         </div>
-    </div>
+    }
+
 </div>
 
 <style>
-    .dashboard-page-wrapper {
-        max-width: 1440px;
-        margin: 0 auto;
+    /* Styling chính xác theo Screenshot của User */
+    .dashboard-employee-wrapper {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
 
-    /* Welcome Card Styling */
-    .welcome-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0 !important;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
+    /* Welcome Banner Gradient: Pastel Lilac / Soft Pink to White */
+    .welcome-employee-banner {
+        background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 35%, #ffffff 100%);
+        border: 1px solid #f1f5f9;
     }
 
-    .welcome-user-name {
-        font-size: 1.85rem;
+    .banner-greeting-title {
+        font-size: 1.65rem;
+        letter-spacing: -0.02em;
     }
 
-    .status-dot-pulse {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        display: inline-block;
-        animation: pulse 2s infinite;
+    /* Quick Action Cards */
+    .quick-action-card {
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    @@keyframes pulse {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
-
-    .period-select-btn {
-        font-size: 12.5px;
-        transition: all 0.2s ease;
-    }
-    .period-select-btn:hover {
-        background-color: #f8fafc !important;
-        border-color: #cbd5e1 !important;
-    }
-
-    /* KPI Cards Styling */
-    .kpi-card {
-        border: 1px solid #e2e8f0 !important;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .kpi-card:hover {
+    .quick-action-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
-        border-color: #cbd5e1 !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06) !important;
+        border-color: #93c5fd;
     }
 
-    .kpi-icon-circle {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+    .action-icon-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.1rem;
+        font-size: 1.25rem;
     }
 
-    .kpi-number {
-        font-size: 1.85rem;
-        font-weight: 700;
-        letter-spacing: -0.025em;
-        line-height: 1;
+    .action-card-title {
+        font-size: 0.95rem;
     }
 
-    .kpi-status-badge {
-        font-size: 11.5px;
-        font-weight: 600;
-        padding: 2.5px 8.5px;
-        border-radius: 9999px;
+    .quick-action-card:hover .action-arrow {
+        transform: translateX(4px);
+        color: #2563eb !important;
     }
 
-    .badge-active {
-        background-color: #ecfdf5;
-        color: #059669;
-        border: 1px solid #a7f3d0;
+    .action-arrow {
+        transition: transform 0.2s ease, color 0.2s ease;
     }
 
-    .badge-neutral {
-        background-color: #f1f5f9;
-        color: #475569;
+    /* Schedule Main Card */
+    .schedule-main-card {
         border: 1px solid #e2e8f0;
     }
 
-    /* Main Chart Cards Styling */
-    .main-chart-card {
-        border: 1px solid #e2e8f0 !important;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
-        min-height: 420px;
+    .schedule-day-item {
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
     }
 
-    .chart-header-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
+    .schedule-day-item:hover {
+        background-color: #ffffff;
+        border-color: #e2e8f0;
     }
 
-    /* Donut Chart Center Text */
-    .donut-center-text {
+    .day-item-active {
+        background-color: #f0f9ff !important;
+        border-color: #bae6fd !important;
+    }
+
+    .day-active-pill {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #0284c7;
+    }
+
+    /* Schedule Timeline */
+    .schedule-timeline::before {
+        content: '';
         position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        line-height: 1.2;
+        top: 8px;
+        bottom: 8px;
+        left: 4.5px;
+        width: 2px;
+        background-color: #e2e8f0;
     }
 
-    .donut-bullet {
-        width: 9px;
-        height: 9px;
+    .timeline-slot-item {
+        padding-left: 18px;
+    }
+
+    .timeline-slot-item::before {
+        content: '';
+        position: absolute;
+        top: 6px;
+        left: -11.5px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #ffffff;
+        border: 2px solid #94a3b8;
+    }
+
+    .timeline-time-badge {
+        font-size: 12px;
+        color: #334155;
+    }
+
+    .status-circle-dot {
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         display: inline-block;
         flex-shrink: 0;
     }
 
-    .bullet-blue { background-color: #2563eb; }
-    .bullet-green { background-color: #10b981; }
-    .bullet-amber { background-color: #f59e0b; }
+    /* Quote Motivation Card */
+    .quote-motivation-card {
+        background: linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%);
+        border: 1px solid #e2e8f0;
+    }
 
-    /* Trend Chart Styling */
-    .trend-chart-wrapper {
-        min-height: 190px;
+    .quote-text {
+        font-size: 0.92rem;
+        color: #475569;
+        line-height: 1.5;
+    }
+
+    /* Profile Side Card */
+    .profile-side-card {
+        border: 1px solid #e2e8f0;
+    }
+
+    .announcements-side-card {
+        border: 1px solid #e2e8f0;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
     }
 </style>
 
 @code {
-    private string selectedPeriod = "10/2026";
-    private int totalEmployees = 3;
-    private int totalPayslips = 3;
-    private decimal totalNetSalary = 49260910m;
-    private decimal totalDeductions = 5852727m;
+    private string viewMode = "Employee"; // Mặc định mở giao diện Nhân viên theo yêu cầu
+    private Employee? currentEmployee;
+    private DateTime selectedDate = DateTime.Today;
+    private List<DateTime> currentWeekDays = new();
+    private List<TimeAttendance> employeeAttendances = new();
+    private TimeAttendance? currentDayAttendance;
+
+    // Admin metrics
+    private int totalEmployees = 0;
+    private decimal totalNetSalary = 0;
+    private decimal totalDeductions = 0;
 
     protected override async Task OnInitializedAsync()
     {
-        var emps = await EmployeeRepo.GetAllEmployeesAsync();
-        totalEmployees = emps.Count();
-
-        var recentPayslips = (await PayslipRepo.GetPayslipsByPeriodAsync(10, 2026)).ToList();
-        totalPayslips = recentPayslips.Count;
-        if (recentPayslips.Any())
+        // 1. Xác định chế độ hiển thị
+        if (UserSession.IsEmployee)
         {
-            totalNetSalary = recentPayslips.Sum(p => p.NetSalary);
-            totalDeductions = recentPayslips.Sum(p => p.TotalDeductions);
+            viewMode = "Employee";
         }
+
+        // 2. Tải thông tin nhân viên đăng nhập thực tế từ CSDL SQL Server
+        await LoadEmployeeDataAsync();
+
+        // 3. Khởi tạo danh sách 7 ngày trong tuần
+        BuildWeekDays();
+
+        // 4. Tải dữ liệu chấm công thực tế
+        await LoadAttendanceDataAsync();
+
+        // 5. Nếu là Admin, tải thêm dữ liệu tổng hợp
+        if (UserSession.IsAdminHr)
+        {
+            var allEmps = await EmployeeRepo.GetAllEmployeesAsync();
+            totalEmployees = allEmps.Count();
+            var payslips = (await PayslipRepo.GetPayslipsByPeriodAsync(10, 2026)).ToList();
+            if (payslips.Any())
+            {
+                totalNetSalary = payslips.Sum(p => p.NetSalary);
+                totalDeductions = payslips.Sum(p => p.TotalDeductions);
+            }
+        }
+
+        UserSession.OnChange += OnSessionChanged;
+    }
+
+    private async Task LoadEmployeeDataAsync()
+    {
+        if (UserSession.CurrentEmployeeId.HasValue)
+        {
+            currentEmployee = await EmployeeRepo.GetEmployeeByIdAsync(UserSession.CurrentEmployeeId.Value);
+        }
+
+        if (currentEmployee == null)
+        {
+            var all = (await EmployeeRepo.GetAllEmployeesAsync()).ToList();
+            if (!string.IsNullOrEmpty(UserSession.CurrentEmployeeCode))
+            {
+                currentEmployee = all.FirstOrDefault(e => e.EmployeeCode.Equals(UserSession.CurrentEmployeeCode, StringComparison.OrdinalIgnoreCase));
+            }
+            currentEmployee ??= all.FirstOrDefault();
+        }
+    }
+
+    private void BuildWeekDays()
+    {
+        // Lấy ngày Thứ 2 đầu tuần của selectedDate
+        int diff = (7 + (selectedDate.DayOfWeek - DayOfWeek.Monday)) % 7;
+        DateTime monday = selectedDate.AddDays(-diff).Date;
+
+        currentWeekDays = Enumerable.Range(0, 7)
+            .Select(i => monday.AddDays(i))
+            .ToList();
+    }
+
+    private async Task LoadAttendanceDataAsync()
+    {
+        if (currentEmployee != null)
+        {
+            employeeAttendances = (await AttendanceRepo.GetAttendancesByEmployeeAsync(
+                currentEmployee.Id, 
+                selectedDate.Month, 
+                selectedDate.Year)).ToList();
+
+            currentDayAttendance = employeeAttendances.FirstOrDefault(a => a.WorkDate.Date == selectedDate.Date);
+        }
+    }
+
+    private async Task SelectDay(DateTime day)
+    {
+        selectedDate = day;
+        currentDayAttendance = employeeAttendances.FirstOrDefault(a => a.WorkDate.Date == selectedDate.Date);
+        await Task.CompletedTask;
+    }
+
+    private async Task GoPreviousDay()
+    {
+        selectedDate = selectedDate.AddDays(-1);
+        BuildWeekDays();
+        await LoadAttendanceDataAsync();
+    }
+
+    private async Task GoNextDay()
+    {
+        selectedDate = selectedDate.AddDays(1);
+        BuildWeekDays();
+        await LoadAttendanceDataAsync();
+    }
+
+    private string GetVietnameseDayName(DateTime date)
+    {
+        return date.DayOfWeek switch
+        {
+            DayOfWeek.Monday => "Thứ 2",
+            DayOfWeek.Tuesday => "Thứ 3",
+            DayOfWeek.Wednesday => "Thứ 4",
+            DayOfWeek.Thursday => "Thứ 5",
+            DayOfWeek.Friday => "Thứ 6",
+            DayOfWeek.Saturday => "Thứ 7",
+            DayOfWeek.Sunday => "Chủ nhật",
+            _ => ""
+        };
+    }
+
+    private async void OnSessionChanged()
+    {
+        await LoadEmployeeDataAsync();
+        await LoadAttendanceDataAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        UserSession.OnChange -= OnSessionChanged;
     }
 }

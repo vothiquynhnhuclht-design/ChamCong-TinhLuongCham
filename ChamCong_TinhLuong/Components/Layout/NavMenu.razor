@@ -32,14 +32,14 @@
 
         <div class="nav-item mb-2">
             <NavLink class="nav-link custom-sidebar-link" href="employees">
-                <i class="bi bi-people nav-icon"></i>
-                <span class="nav-label">Nhân sự</span>
+                <i class="bi bi-person-fill nav-icon"></i>
+                <span class="nav-label">Hồ sơ cá nhân</span>
             </NavLink>
         </div>
 
         <div class="nav-item mb-2">
             <NavLink class="nav-link custom-sidebar-link" href="attendance">
-                <i class="bi bi-clock nav-icon"></i>
+                <i class="bi bi-clock-fill nav-icon"></i>
                 <span class="nav-label">Chấm công & Thời gian</span>
             </NavLink>
         </div>
@@ -48,6 +48,13 @@
             <NavLink class="nav-link custom-sidebar-link" href="payroll">
                 <i class="bi bi-currency-dollar nav-icon"></i>
                 <span class="nav-label">Lương & Phúc lợi</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item mb-2">
+            <NavLink class="nav-link custom-sidebar-link" href="attendance">
+                <i class="bi bi-file-earmark-text-fill nav-icon"></i>
+                <span class="nav-label">Đơn từ</span>
             </NavLink>
         </div>
 
@@ -63,7 +70,7 @@
 
         <div class="nav-item mb-2">
             <NavLink class="nav-link custom-sidebar-link" href="ai-assistant">
-                <i class="bi bi-gear nav-icon"></i>
+                <i class="bi bi-gear-fill nav-icon"></i>
                 <span class="nav-label">Thiết lập</span>
             </NavLink>
         </div>
@@ -71,16 +78,19 @@
 
     <!-- Bottom User Profile Card -->
     <div class="sidebar-user-footer px-2.5 pb-3.5 mt-auto">
-        <a href="employees" class="sidebar-user-card p-2.5 rounded-3 d-flex align-items-center justify-content-between text-decoration-none">
+        <a href="employees" class="sidebar-user-card p-2 rounded-3 d-flex align-items-center justify-content-between text-decoration-none">
             <div class="d-flex align-items-center gap-2.5 overflow-hidden">
-                <div class="user-avatar-hr d-flex align-items-center justify-content-center text-white fw-bold">
-                    HR
-                </div>
-                <div class="user-card-title text-truncate text-white fw-medium">
-                    @(UserSession.IsAdminHr ? "Quản trị viên / HR" : UserSession.CurrentEmployeeName)
+                <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80" alt="Avatar" class="rounded-circle shadow-xs flex-shrink-0" style="width: 34px; height: 34px; object-fit: cover;" onerror="this.src='https://ui-avatars.com/api/?name=Nguyen+Thi+Mai&background=0D8ABC&color=fff';" />
+                <div class="overflow-hidden">
+                    <div class="user-card-title text-truncate text-white fw-semibold small">
+                        @(string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Nguyễn Thị Mai" : UserSession.CurrentEmployeeName)
+                    </div>
+                    <div class="text-white-50" style="font-size: 11px;">
+                        @(UserSession.IsAdminHr ? "Quản trị viên" : "Nhân viên")
+                    </div>
                 </div>
             </div>
-            <i class="bi bi-chevron-right text-white-50" style="font-size: 11px;"></i>
+            <i class="bi bi-chevron-down text-white-50 ms-1" style="font-size: 11px;"></i>
         </a>
     </div>
 </div>
