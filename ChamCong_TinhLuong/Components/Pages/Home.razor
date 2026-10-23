@@ -10,17 +10,17 @@
 
 <PageTitle>Tổng Quan - HRM Enterprise</PageTitle>
 
-<div class="dashboard-employee-wrapper py-2">
+<div class="overview-container">
 
     @if (UserSession.IsAdminHr)
     {
-        <!-- Chuyển đổi góc nhìn dành cho Quản trị viên / Kiểm thử đồ án -->
-        <div class="d-flex align-items-center justify-content-between p-2.5 px-3 mb-3 bg-white border rounded-3 shadow-2xs">
+        <!-- Thanh chuyển đổi góc nhìn Quản trị / Nhân viên -->
+        <div class="role-switcher-bar mb-3.5 d-flex align-items-center justify-content-between p-2.5 px-3 bg-white rounded-3 shadow-xs">
             <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-2">
                     <i class="bi bi-shield-check me-1"></i>Tài khoản Quản trị
                 </span>
-                <span class="text-muted small">Xem trước bảng điều khiển theo phân quyền người dùng:</span>
+                <span class="text-slate-500 small">Đang xem trước giao diện:</span>
             </div>
             <div class="btn-group btn-group-sm" role="group">
                 <button type="button" class="btn @(viewMode == "Employee" ? "btn-primary shadow-xs" : "btn-outline-secondary") px-3 fw-semibold" @onclick='() => viewMode = "Employee"'>
@@ -36,9 +36,9 @@
     <!-- Thông báo kết quả nộp đơn nghỉ phép thành công -->
     @if (!string.IsNullOrEmpty(alertSuccessMessage))
     {
-        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 py-2.5 px-3 rounded-3 mb-3 shadow-2xs" role="alert">
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 py-2.5 px-3 rounded-3 mb-3 shadow-xs" role="alert">
             <i class="bi bi-check-circle-fill text-success fs-5"></i>
-            <div>
+            <div class="small">
                 <strong>Thành công:</strong> @alertSuccessMessage
             </div>
             <button type="button" class="btn-close" @onclick="() => alertSuccessMessage = null"></button>
@@ -48,102 +48,118 @@
     @if (viewMode == "Employee" || UserSession.IsEmployee)
     {
         <!-- ========================================================================================= -->
-        <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN NHÂN VIÊN (MINIMALIST B2B - ĐẸP, RÕ RÀNG & DỄ NHÌN) -->
+        <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN NHÂN VIÊN (MINIMALIST B2B SAAS THEO MOCKUP CHUẨN) -->
         <!-- ========================================================================================= -->
 
         <!-- 1. BANNER CHÀO MỪNG (GREETING BANNER) -->
-        <div class="card border-0 rounded-4 mb-4 overflow-hidden shadow-xs welcome-employee-banner">
-            <div class="card-body p-4 p-lg-4 d-flex align-items-center justify-content-between position-relative">
-                <div class="z-1">
-                    <div class="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill bg-white/80 border border-slate-200/60 text-slate-600 small mb-2 shadow-2xs" style="font-size: 11px;">
-                        <span class="status-circle-dot bg-emerald-500"></span>
-                        <span class="fw-semibold">Cổng thông tin tự phục vụ nhân sự (ESS)</span>
-                    </div>
-                    <h2 class="fw-bolder text-slate-900 mb-1 tracking-tight banner-greeting-title">
+        <div class="welcome-banner mb-4">
+            <div class="d-flex align-items-center justify-content-between position-relative h-100">
+                <div class="welcome-text-content">
+                    <h1 class="welcome-heading mb-1.5">
                         Xin chào, @(string.IsNullOrEmpty(currentEmployee?.FullName) ? (string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Nguyễn Thị Mai" : UserSession.CurrentEmployeeName) : currentEmployee.FullName)!
-                    </h2>
-                    <p class="text-slate-500 mb-0 small fs-6">
-                        Chúc bạn một ngày làm việc hiệu quả và tràn đầy năng lượng!
+                    </h1>
+                    <p class="welcome-subheading mb-0">
+                        Chúc bạn một ngày làm việc hiệu quả và nhiều năng lượng!
                     </p>
                 </div>
 
-                <!-- Vector Illustration (Woman working at desk with laptop and plant) -->
-                <div class="welcome-employee-art d-none d-md-block pe-lg-3">
-                    <svg width="220" height="105" viewBox="0 0 220 105" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="150" cy="52" r="42" fill="#F1F5F9" opacity="0.8" />
-                        <path d="M185 82C185 66 193 58 198 54C203 58 211 66 211 82" fill="#38BDF8" opacity="0.7" />
-                        <line x1="198" y1="54" x2="198" y2="82" stroke="#0284C7" stroke-width="2" />
-                        <rect x="55" y="84" width="145" height="4" rx="2" fill="#CBD5E1" />
-                        <path d="M115 63C115 50 125 44 135 44C145 44 155 50 155 63L160 84H110L115 63Z" fill="#3B82F6" />
-                        <circle cx="135" cy="31" r="11" fill="#FBD5BD" />
-                        <path d="M126 29C126 19 132 15 138 15C146 15 148 21 146 29C143 27 138 27 134 31Z" fill="#1E293B" />
-                        <path d="M126 29C124 37 126 45 130 49" stroke="#1E293B" stroke-width="4" stroke-linecap="round" />
-                        <rect x="125" y="71" width="28" height="13" rx="2" fill="#0F172A" />
-                        <rect x="128" y="73" width="22" height="9" rx="1" fill="#BAE6FD" />
-                        <line x1="120" y1="84" x2="158" y2="84" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" />
-                        <circle cx="50" cy="38" r="13" fill="#E9D5FF" opacity="0.6" />
-                        <circle cx="75" cy="24" r="7" fill="#FBCFE8" opacity="0.6" />
+                <!-- Minh họa đồ họa cô gái làm việc tại bàn (Anime/Flat Illustration chuẩn Mockup) -->
+                <div class="welcome-art-wrapper d-none d-md-block">
+                    <svg width="220" height="110" viewBox="0 0 220 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Nền pastel tròn & mây trôi mờ -->
+                        <circle cx="160" cy="55" r="45" fill="#FCE7F3" opacity="0.45" />
+                        <circle cx="65" cy="40" r="16" fill="#EDE9FE" opacity="0.6" />
+                        <circle cx="88" cy="22" r="9" fill="#E0F2FE" opacity="0.7" />
+
+                        <!-- Chậu cây xanh bên phải -->
+                        <path d="M196 90C194 72 201 64 207 60C213 64 219 72 217 90" fill="#34D399" opacity="0.85" />
+                        <path d="M185 90C183 76 190 70 195 66C200 70 205 76 203 90" fill="#10B981" opacity="0.75" />
+                        <rect x="188" y="90" width="22" height="15" rx="3" fill="#D97706" opacity="0.8" />
+
+                        <!-- Mặt bàn làm việc phẳng -->
+                        <rect x="35" y="92" width="165" height="5" rx="2.5" fill="#CBD5E1" />
+
+                        <!-- Cô gái ngồi làm việc -->
+                        <!-- Tóc dài xõa vai -->
+                        <path d="M123 35C123 20 132 15 142 15C153 15 158 22 157 35C154 32 147 31 142 36C137 31 130 32 123 35Z" fill="#1E293B" />
+                        <path d="M123 35C120 46 122 58 126 64C128 67 131 69 133 71" stroke="#1E293B" stroke-width="5" stroke-linecap="round" />
+                        
+                        <!-- Khuôn mặt và cổ -->
+                        <circle cx="143" cy="36" r="13" fill="#FDE047" opacity="0.4" />
+                        <circle cx="143" cy="36" r="12" fill="#FED7AA" />
+                        <!-- Nụ cười & Mắt tinh tế -->
+                        <circle cx="139" cy="34" r="1.5" fill="#0F172A" />
+                        <circle cx="147" cy="34" r="1.5" fill="#0F172A" />
+                        <path d="M141 40C142 42 144 42 145 40" stroke="#0F172A" stroke-width="1.2" stroke-linecap="round" />
+
+                        <!-- Thân trên áo xanh cobalt -->
+                        <path d="M126 68C126 55 134 50 143 50C152 50 160 55 160 68L165 92H121L126 68Z" fill="#2563EB" />
+                        <!-- Cánh tay vươn tới bàn phím laptop -->
+                        <path d="M130 73L138 88H152L156 73" stroke="#2563EB" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+                        <circle cx="144" cy="88" r="3" fill="#FED7AA" />
+
+                        <!-- Laptop hiện đại -->
+                        <rect x="134" y="78" width="30" height="14" rx="2" fill="#0F172A" />
+                        <rect x="137" y="80" width="24" height="10" rx="1" fill="#BAE6FD" />
+                        <line x1="128" y1="92" x2="170" y2="92" stroke="#64748B" stroke-width="3" stroke-linecap="round" />
                     </svg>
                 </div>
             </div>
         </div>
 
-        <!-- 2. BA THẺ THAO TÁC NHANH (3 QUICK ACCESS CARDS) -->
-        <div class="row g-3 mb-4">
+        <!-- 2. BA THẺ THAO TÁC NHANH (3 QUICK ACCESS CARDS CHUẨN MOCKUP) -->
+        <div class="row g-3.5 mb-4">
             
             <!-- Card 1: Chấm công -->
             <div class="col-12 col-md-4">
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick='() => Navigation.NavigateTo("/attendance")'>
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="action-icon-box bg-blue-50 text-primary">
-                                <i class="bi bi-clock"></i>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold text-slate-900 mb-0.5 action-card-title">Chấm công</h6>
-                                <p class="text-slate-400 small mb-0" style="font-size: 12.5px;">Xem lịch làm việc, check-in/out</p>
-                            </div>
+                <div class="quick-card d-flex align-items-center justify-content-between cursor-pointer" @onclick='() => Navigation.NavigateTo("/attendance")'>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="quick-icon-circle icon-clock-bg">
+                            <i class="bi bi-clock"></i>
                         </div>
-                        <i class="bi bi-arrow-right text-slate-400 fs-5 action-arrow"></i>
+                        <div>
+                            <div class="quick-card-title">Chấm công</div>
+                            <div class="quick-card-sub">Xem lịch làm việc, check-in/out</div>
+                        </div>
+                    </div>
+                    <div class="quick-arrow text-slate-400">
+                        <i class="bi bi-arrow-right"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- Card 2: Đơn xin nghỉ phép (CLICK ĐỂ MỞ MODAL TẠO ĐƠN NGAY TRÊN TRANG) -->
+            <!-- Card 2: Đơn xin nghỉ phép (CLICK ĐỂ MỞ MODAL TẠO ĐƠN TRỰC TIẾP) -->
             <div class="col-12 col-md-4">
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick="OpenCreateLeaveModal">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="action-icon-box bg-purple-50 text-purple-600">
-                                <i class="bi bi-file-earmark-text"></i>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold text-slate-900 mb-0.5 action-card-title">Đơn xin nghỉ phép</h6>
-                                <p class="text-slate-400 small mb-0" style="font-size: 12.5px;">Tạo đơn nghỉ, theo dõi trạng thái</p>
-                            </div>
+                <div class="quick-card d-flex align-items-center justify-content-between cursor-pointer" @onclick="OpenCreateLeaveModal">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="quick-icon-circle icon-file-bg">
+                            <i class="bi bi-file-earmark-text"></i>
                         </div>
-                        <div class="d-flex align-items-center gap-1.5">
-                            <span class="badge bg-purple-subtle text-purple-700 rounded-pill px-2 py-0.5 small d-none d-xl-inline">Tạo ngay</span>
-                            <i class="bi bi-arrow-right text-slate-400 fs-5 action-arrow"></i>
+                        <div>
+                            <div class="quick-card-title">Đơn xin nghỉ phép</div>
+                            <div class="quick-card-sub">Tạo đơn nghỉ, theo dõi trạng thái</div>
                         </div>
+                    </div>
+                    <div class="quick-arrow text-slate-400">
+                        <i class="bi bi-arrow-right"></i>
                     </div>
                 </div>
             </div>
 
             <!-- Card 3: Xem bảng lương -->
             <div class="col-12 col-md-4">
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick='() => Navigation.NavigateTo("/payroll")'>
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="action-icon-box bg-emerald-50 text-emerald-600">
-                                <i class="bi bi-file-earmark-spreadsheet"></i>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold text-slate-900 mb-0.5 action-card-title">Xem bảng lương</h6>
-                                <p class="text-slate-400 small mb-0" style="font-size: 12.5px;">Xem thông tin lương, phúc lợi</p>
-                            </div>
+                <div class="quick-card d-flex align-items-center justify-content-between cursor-pointer" @onclick='() => Navigation.NavigateTo("/payroll")'>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="quick-icon-circle icon-payroll-bg">
+                            <i class="bi bi-file-earmark-spreadsheet"></i>
                         </div>
-                        <i class="bi bi-arrow-right text-slate-400 fs-5 action-arrow"></i>
+                        <div>
+                            <div class="quick-card-title">Xem bảng lương</div>
+                            <div class="quick-card-sub">Xem thông tin lương, phúc lợi</div>
+                        </div>
+                    </div>
+                    <div class="quick-arrow text-slate-400">
+                        <i class="bi bi-arrow-right"></i>
                     </div>
                 </div>
             </div>
@@ -153,118 +169,114 @@
         <!-- 3. KHU VỰC NỘI DUNG CHÍNH (8 CỘT TRÁI - 4 CỘT PHẢI) -->
         <div class="row g-4 mb-4">
             
-            <!-- CỘT TRÁI (8 CỘT): LỊCH LÀM VIỆC CỦA TÔI & CHÂM NGÔN -->
+            <!-- CỘT TRÁI (8 CỘT): LỊCH LÀM VIỆC CỦA TÔI & CHÂM NGÔN TRUYỀN CẢM HỨNG -->
             <div class="col-12 col-lg-8">
                 
                 <!-- Card: Lịch làm việc của tôi -->
-                <div class="card border-0 shadow-xs rounded-4 bg-white mb-4 overflow-hidden schedule-main-card">
+                <div class="content-box schedule-card mb-4">
                     <!-- Header -->
-                    <div class="card-header bg-white border-bottom py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="schedule-header d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
                             <i class="bi bi-calendar-event text-primary fs-5"></i>
-                            <h5 class="fw-bold text-slate-900 mb-0 fs-6">Lịch làm việc của tôi</h5>
+                            <h2 class="section-title mb-0">Lịch làm việc của tôi</h2>
                         </div>
 
-                        <!-- Date Picker / Navigation -->
-                        <div class="d-flex align-items-center gap-1.5">
-                            <span class="badge bg-light text-slate-700 border px-3 py-1.5 rounded-3 fw-medium d-flex align-items-center gap-1.5" style="font-size: 12px;">
-                                <i class="bi bi-calendar3 text-primary"></i>
+                        <!-- Date Navigation -->
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="date-display-badge">
+                                <i class="bi bi-calendar3 me-1.5 text-slate-500"></i>
                                 <span>@GetVietnameseDayName(selectedDate), @selectedDate.ToString("dd/MM/yyyy")</span>
-                            </span>
-                            <button class="btn btn-sm btn-light border p-1 px-2 rounded-2 text-slate-600" title="Ngày trước" @onclick="GoPreviousDay">
-                                <i class="bi bi-chevron-left" style="font-size: 11px;"></i>
-                            </button>
-                            <button class="btn btn-sm btn-light border p-1 px-2 rounded-2 text-slate-600" title="Ngày kế tiếp" @onclick="GoNextDay">
-                                <i class="bi bi-chevron-right" style="font-size: 11px;"></i>
-                            </button>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button class="btn-nav-arrow" title="Ngày trước" @onclick="GoPreviousDay">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <button class="btn-nav-arrow" title="Ngày kế tiếp" @onclick="GoNextDay">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Card Body (Chia 2 cột: Danh sách 7 ngày bên trái & Timeline bên phải) -->
-                    <div class="card-body p-0">
+                    <!-- Body: 2 Sub-columns -->
+                    <div class="schedule-body">
                         <div class="row g-0">
                             
-                            <!-- Danh sách 7 ngày trong tuần (Trái: 35%) -->
-                            <div class="col-12 col-md-5 col-lg-4 border-end bg-slate-50/50 p-2.5">
-                                <div class="d-flex flex-column gap-1.5">
+                            <!-- Sub-col 1: 7 ngày trong tuần (35% width) -->
+                            <div class="col-12 col-md-5 col-lg-4 schedule-days-pane">
+                                <div class="d-flex flex-column gap-1">
                                     @foreach (var day in currentWeekDays)
                                     {
                                         bool isSelected = day.Date == selectedDate.Date;
 
-                                        <div class="schedule-day-item p-2.5 rounded-3 d-flex align-items-center justify-content-between cursor-pointer @(isSelected ? "day-item-active" : "")"
+                                        <div class="schedule-day-row @(isSelected ? "is-active" : "") cursor-pointer"
                                              @onclick="() => SelectDay(day)">
-                                            <div class="d-flex align-items-center gap-2.5">
-                                                <i class="bi bi-calendar @(isSelected ? "text-primary" : "text-slate-400")" style="font-size: 14px;"></i>
-                                                <div>
-                                                    <div class="fw-bold @(isSelected ? "text-primary" : "text-slate-800")" style="font-size: 12.5px;">
-                                                        @GetVietnameseDayName(day)
-                                                    </div>
-                                                    <div class="text-slate-400" style="font-size: 11px;">
-                                                        @day.ToString("dd/MM/yyyy")
-                                                    </div>
+                                            <div class="day-icon-circle-sm">
+                                                <i class="bi bi-calendar @(isSelected ? "text-primary" : "text-slate-400")"></i>
+                                            </div>
+                                            <div>
+                                                <div class="day-name @(isSelected ? "text-primary fw-bold" : "text-slate-800 fw-semibold")">
+                                                    @GetVietnameseDayName(day)
+                                                </div>
+                                                <div class="day-date text-slate-400">
+                                                    @day.ToString("dd/MM/yyyy")
                                                 </div>
                                             </div>
-                                            @if (isSelected)
-                                            {
-                                                <span class="day-active-pill"></span>
-                                            }
                                         </div>
                                     }
                                 </div>
                             </div>
 
-                            <!-- Timeline chi tiết ngày được chọn (Phải: 65%) -->
-                            <div class="col-12 col-md-7 col-lg-8 p-4">
+                            <!-- Sub-col 2: Timeline chi tiết ca làm việc (65% width) -->
+                            <div class="col-12 col-md-7 col-lg-8 schedule-timeline-pane">
                                 @if (selectedDate.DayOfWeek == DayOfWeek.Saturday || selectedDate.DayOfWeek == DayOfWeek.Sunday)
                                 {
-                                    <div class="p-4 text-center text-muted my-4">
+                                    <div class="weekend-empty-box text-center py-5">
                                         <i class="bi bi-cup-hot fs-1 text-slate-300 d-block mb-2"></i>
-                                        <h6 class="fw-bold text-slate-700 mb-1">Nghỉ cuối tuần</h6>
-                                        <p class="small text-slate-400 mb-0">Hôm nay là ngày nghỉ định kỳ theo quy chế làm việc của công ty.</p>
+                                        <h3 class="fw-bold text-slate-700 fs-6 mb-1">Nghỉ cuối tuần</h3>
+                                        <p class="small text-slate-400 mb-0">Hôm nay là ngày nghỉ định kỳ theo quy chế công ty.</p>
                                     </div>
                                 }
                                 else
                                 {
-                                    <div class="schedule-timeline position-relative ps-3">
+                                    <div class="timeline-slot-list">
                                         
                                         <!-- Slot 1: Ca Sáng (08:00 - 12:00) -->
-                                        <div class="timeline-slot-item mb-4 position-relative">
-                                            <div class="timeline-time-badge fw-bold text-slate-700">08:00 - 12:00</div>
-                                            <div class="timeline-content-box mt-1.5 p-2.5 rounded-3 bg-slate-50 border border-slate-100">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <span class="status-circle-dot bg-primary"></span>
-                                                    <span class="fw-bold text-slate-900 small">Làm việc tại văn phòng</span>
-                                                </div>
-                                                <div class="text-slate-400 small mt-1 ms-3.5" style="font-size: 11.5px;">
-                                                    <i class="bi bi-geo-alt me-1"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng làm việc")
+                                        <div class="timeline-slot d-flex align-items-center">
+                                            <div class="timeline-slot-time">08:00 - 12:00</div>
+                                            <div class="timeline-dot dot-blue"></div>
+                                            <div class="timeline-info">
+                                                <div class="timeline-title">Làm việc tại văn phòng</div>
+                                                <div class="timeline-sub">
+                                                    <i class="bi bi-geo-alt me-1 text-slate-400"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng Kinh doanh")
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <div class="timeline-separator"></div>
 
                                         <!-- Slot 2: Nghỉ trưa (12:00 - 13:00) -->
-                                        <div class="timeline-slot-item mb-4 position-relative">
-                                            <div class="timeline-time-badge fw-bold text-slate-700">12:00 - 13:00</div>
-                                            <div class="timeline-content-box mt-1.5 p-2.5 rounded-3 bg-slate-50 border border-slate-100">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <span class="status-circle-dot bg-emerald-500"></span>
-                                                    <span class="fw-bold text-slate-900 small">Nghỉ trưa</span>
-                                                </div>
-                                                <div class="text-slate-400 small mt-1 ms-3.5" style="font-size: 11.5px;">
-                                                    <i class="bi bi-cup-straw me-1"></i>Căn tin công ty
+                                        <div class="timeline-slot d-flex align-items-center">
+                                            <div class="timeline-slot-time">12:00 - 13:00</div>
+                                            <div class="timeline-dot dot-green"></div>
+                                            <div class="timeline-info">
+                                                <div class="timeline-title">Nghỉ trưa</div>
+                                                <div class="timeline-sub">
+                                                    <i class="bi bi-cup-hot me-1 text-slate-400"></i>Căn tin công ty
                                                 </div>
                                             </div>
                                         </div>
 
+                                        <div class="timeline-separator"></div>
+
                                         <!-- Slot 3: Ca Chiều (13:00 - 17:00) -->
-                                        <div class="timeline-slot-item position-relative">
-                                            <div class="timeline-time-badge fw-bold text-slate-700">13:00 - 17:00</div>
-                                            <div class="timeline-content-box mt-1.5 p-2.5 rounded-3 bg-slate-50 border border-slate-100">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <span class="status-circle-dot bg-purple-600"></span>
-                                                    <span class="fw-bold text-slate-900 small">Làm việc tại văn phòng</span>
-                                                </div>
-                                                <div class="text-slate-400 small mt-1 ms-3.5" style="font-size: 11.5px;">
-                                                    <i class="bi bi-geo-alt me-1"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng làm việc")
+                                        <div class="timeline-slot d-flex align-items-center">
+                                            <div class="timeline-slot-time">13:00 - 17:00</div>
+                                            <div class="timeline-dot dot-purple"></div>
+                                            <div class="timeline-info">
+                                                <div class="timeline-title">Làm việc tại văn phòng</div>
+                                                <div class="timeline-sub">
+                                                    <i class="bi bi-geo-alt me-1 text-slate-400"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng Kinh doanh")
                                                 </div>
                                             </div>
                                         </div>
@@ -273,13 +285,15 @@
 
                                     @if (currentDayAttendance != null)
                                     {
-                                        <div class="mt-4 p-2.5 rounded-3 bg-emerald-50 border border-emerald-200 text-emerald-800 d-flex align-items-center justify-content-between small">
-                                            <span>
-                                                <i class="bi bi-check-circle-fill me-1 text-emerald-600"></i>
-                                                Đã chấm công: Vào <strong>@(currentDayAttendance.CheckIn.HasValue ? currentDayAttendance.CheckIn.Value.ToString(@"hh\:mm") : "0")</strong> 
-                                                - Ra <strong>@(currentDayAttendance.CheckOut.HasValue ? currentDayAttendance.CheckOut.Value.ToString(@"hh\:mm") : "0")</strong>
-                                            </span>
-                                            <span class="badge bg-emerald-600 text-white">@currentDayAttendance.ActualWorkDays.ToString("0.#") công</span>
+                                        <div class="attendance-status-banner mt-4 d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bi bi-check-circle-fill text-emerald-600 fs-5"></i>
+                                                <span class="small text-slate-800">
+                                                    Đã chấm công: Vào <strong>@(currentDayAttendance.CheckIn.HasValue ? currentDayAttendance.CheckIn.Value.ToString(@"hh\:mm") : "0")</strong> 
+                                                    - Ra <strong>@(currentDayAttendance.CheckOut.HasValue ? currentDayAttendance.CheckOut.Value.ToString(@"hh\:mm") : "0")</strong>
+                                                </span>
+                                            </div>
+                                            <span class="badge bg-emerald-600 text-white rounded-pill px-2.5 py-1">@currentDayAttendance.ActualWorkDays.ToString("0.#") công</span>
                                         </div>
                                     }
                                 }
@@ -289,25 +303,55 @@
                     </div>
                 </div>
 
-                <!-- Card: Châm ngôn tạo động lực (Motivation Quote Card) -->
-                <div class="card border-0 rounded-4 overflow-hidden quote-motivation-card p-3 p-md-3.5 shadow-xs">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="quote-graphic-icon flex-shrink-0">
-                            <!-- 3D Calendar/Clock icon vector -->
-                            <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
-                                <rect x="6" y="10" width="36" height="32" rx="8" fill="#F87171" />
-                                <rect x="6" y="10" width="36" height="12" rx="8" fill="#EF4444" />
-                                <circle cx="16" cy="7" r="2.5" fill="#CBD5E1" />
-                                <circle cx="32" cy="7" r="2.5" fill="#CBD5E1" />
-                                <circle cx="34" cy="34" r="10" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2" />
-                                <path d="M34 28V34L38 36" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+                <!-- Card: Châm ngôn tạo động lực (Motivation Quote Card Chuẩn Mockup) -->
+                <div class="motivation-quote-card">
+                    <div class="d-flex align-items-center justify-content-between position-relative">
+                        
+                        <!-- 3D Calendar & Clock Graphic -->
+                        <div class="motivation-graphic-box flex-shrink-0">
+                            <svg width="68" height="60" viewBox="0 0 68 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Thân lịch để bàn trắng/đỏ -->
+                                <rect x="8" y="14" width="46" height="38" rx="7" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+                                <path d="M8 21C8 17.134 11.134 14 15 14H47C50.866 14 54 17.134 54 21V25H8V21Z" fill="#EF4444" />
+                                <!-- Khuyên lò xo đỏ -->
+                                <rect x="18" y="10" width="4" height="8" rx="2" fill="#F87171" stroke="#FFFFFF" stroke-width="1" />
+                                <rect x="29" y="10" width="4" height="8" rx="2" fill="#F87171" stroke="#FFFFFF" stroke-width="1" />
+                                <rect x="40" y="10" width="4" height="8" rx="2" fill="#F87171" stroke="#FFFFFF" stroke-width="1" />
+                                <!-- Lưới ngày trên tờ lịch -->
+                                <rect x="15" y="31" width="6" height="4" rx="1" fill="#93C5FD" />
+                                <rect x="25" y="31" width="6" height="4" rx="1" fill="#CBD5E1" />
+                                <rect x="35" y="31" width="6" height="4" rx="1" fill="#CBD5E1" />
+                                <rect x="15" y="39" width="6" height="4" rx="1" fill="#CBD5E1" />
+                                <rect x="25" y="39" width="6" height="4" rx="1" fill="#3B82F6" />
+                                <rect x="35" y="39" width="6" height="4" rx="1" fill="#CBD5E1" />
+
+                                <!-- Đồng hồ nhỏ màu xanh bên cạnh -->
+                                <circle cx="48" cy="44" r="12" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.5" />
+                                <circle cx="48" cy="44" r="9.5" fill="#2563EB" />
+                                <path d="M48 38V44L52 46" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
                             </svg>
                         </div>
-                        <div class="flex-grow-1">
-                            <p class="quote-text mb-0 fw-semibold text-slate-700 fst-italic">
-                                “Làm việc chăm chỉ hôm nay để chạm đến thành công ngày mai!”
-                            </p>
+
+                        <!-- Chữ châm ngôn -->
+                        <div class="motivation-quote-text ps-3 flex-grow-1">
+                            <div class="d-flex align-items-start gap-2">
+                                <span class="quote-mark">“</span>
+                                <div class="quote-lines">
+                                    <div>Làm việc chăm chỉ hôm nay</div>
+                                    <div>để chạm đến thành công ngày mai!”</div>
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- Lá cây trang trí màu tím pastel góc phải -->
+                        <div class="motivation-botanical-art d-none d-sm-block">
+                            <svg width="55" height="55" viewBox="0 0 55 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M45 45C35 45 25 35 25 25C25 15 35 5 45 5C45 15 45 25 45 45Z" fill="#C4B5FD" opacity="0.6" />
+                                <path d="M45 45C40 38 35 30 40 20C42 16 45 14 48 10C48 20 48 32 45 45Z" fill="#A78BFA" opacity="0.7" />
+                                <path d="M30 48C24 44 20 38 22 30C23 26 26 22 28 18C30 24 30 36 30 48Z" fill="#C4B5FD" opacity="0.4" />
+                            </svg>
+                        </div>
+
                     </div>
                 </div>
 
@@ -317,75 +361,79 @@
             <div class="col-12 col-lg-4">
                 
                 <!-- Card 1: Thông tin cá nhân -->
-                <div class="card border-0 shadow-xs rounded-4 bg-white mb-4 p-4 profile-side-card">
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <i class="bi bi-person text-primary fs-5"></i>
-                        <h5 class="fw-bold text-slate-900 mb-0 fs-6">Thông tin cá nhân</h5>
+                <div class="content-box profile-card mb-4">
+                    <!-- Header -->
+                    <div class="profile-card-header d-flex align-items-center gap-2 mb-3.5">
+                        <i class="bi bi-person-fill text-primary fs-5"></i>
+                        <h2 class="section-title mb-0">Thông tin cá nhân</h2>
                     </div>
 
-                    <!-- Avatar + Name + Role Center -->
-                    <div class="text-center pb-3 border-bottom">
-                        <div class="profile-avatar-large mx-auto mb-2.5">
+                    <!-- Avatar + Name + Subtitle -->
+                    <div class="profile-avatar-center text-center pb-3">
+                        <div class="profile-avatar-frame mx-auto mb-2">
                             <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80" 
-                                 alt="Avatar" class="rounded-circle shadow-xs" 
-                                 style="width: 84px; height: 84px; object-fit: cover;" 
+                                 alt="Avatar" class="avatar-photo" 
                                  onerror="this.src='https://ui-avatars.com/api/?name=Nguyen+Thi+Mai&background=0D8ABC&color=fff';" />
                         </div>
-                        <h5 class="fw-bolder text-slate-900 mb-0.5">
+                        <h3 class="profile-user-name mb-0.5">
                             @(string.IsNullOrEmpty(currentEmployee?.FullName) ? (string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Nguyễn Thị Mai" : UserSession.CurrentEmployeeName) : currentEmployee.FullName)
-                        </h5>
-                        <p class="text-slate-400 small mb-1">
+                        </h3>
+                        <div class="profile-user-role mb-1">
                             @(string.IsNullOrEmpty(currentEmployee?.Position) ? "Nhân viên" : currentEmployee.Position)
-                        </p>
-                        <span class="badge bg-light text-slate-600 border px-2.5 py-1 rounded-pill" style="font-size: 11px;">
-                            Mã NV: @(string.IsNullOrEmpty(currentEmployee?.EmployeeCode) ? "0" : currentEmployee.EmployeeCode)
-                        </span>
+                        </div>
+                        <div class="profile-user-code">
+                            Mã NV: @(string.IsNullOrEmpty(currentEmployee?.EmployeeCode) ? "NV0012" : currentEmployee.EmployeeCode)
+                        </div>
                     </div>
 
-                    <!-- Details Rows (Email, Phone, Birth/Join, Address/Dept) -->
-                    <div class="py-3 d-flex flex-column gap-2.5" style="font-size: 13px;">
+                    <!-- 4 Rows Info (Email, Điện thoại, Ngày sinh, Địa chỉ) -->
+                    <div class="profile-info-list py-2.5">
                         
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-slate-500 d-flex align-items-center gap-2">
-                                <i class="bi bi-envelope text-slate-400"></i>Email
-                            </span>
-                            <span class="text-slate-800 fw-medium text-truncate ms-2" style="max-width: 170px;" title="@currentEmployee?.Email">
-                                @(string.IsNullOrEmpty(currentEmployee?.Email) ? "0" : currentEmployee.Email)
-                            </span>
+                        <div class="profile-info-row d-flex align-items-center justify-content-between">
+                            <div class="info-label d-flex align-items-center gap-2 text-slate-500">
+                                <i class="bi bi-envelope text-slate-400"></i>
+                                <span>Email</span>
+                            </div>
+                            <div class="info-value text-truncate" title="@currentEmployee?.Email">
+                                @(string.IsNullOrEmpty(currentEmployee?.Email) ? "mai.nguyen@techcorp.com" : currentEmployee.Email)
+                            </div>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-slate-500 d-flex align-items-center gap-2">
-                                <i class="bi bi-telephone text-slate-400"></i>Số điện thoại
-                            </span>
-                            <span class="text-slate-800 fw-medium">
-                                @(string.IsNullOrEmpty(currentEmployee?.PhoneNumber) ? "0" : currentEmployee.PhoneNumber)
-                            </span>
+                        <div class="profile-info-row d-flex align-items-center justify-content-between">
+                            <div class="info-label d-flex align-items-center gap-2 text-slate-500">
+                                <i class="bi bi-telephone text-slate-400"></i>
+                                <span>Số điện thoại</span>
+                            </div>
+                            <div class="info-value">
+                                @(string.IsNullOrEmpty(currentEmployee?.PhoneNumber) ? "0912 345 678" : currentEmployee.PhoneNumber)
+                            </div>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-slate-500 d-flex align-items-center gap-2">
-                                <i class="bi bi-calendar-check text-slate-400"></i>Ngày vào làm
-                            </span>
-                            <span class="text-slate-800 fw-medium">
-                                @(currentEmployee != null ? currentEmployee.JoinDate.ToString("dd/MM/yyyy") : "0")
-                            </span>
+                        <div class="profile-info-row d-flex align-items-center justify-content-between">
+                            <div class="info-label d-flex align-items-center gap-2 text-slate-500">
+                                <i class="bi bi-calendar-check text-slate-400"></i>
+                                <span>Ngày vào làm</span>
+                            </div>
+                            <div class="info-value">
+                                @(currentEmployee != null ? currentEmployee.JoinDate.ToString("dd/MM/yyyy") : "10/10/2026")
+                            </div>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-slate-500 d-flex align-items-center gap-2">
-                                <i class="bi bi-geo-alt text-slate-400"></i>Phòng ban
-                            </span>
-                            <span class="text-slate-800 fw-medium text-truncate ms-2" style="max-width: 170px;" title="@currentEmployee?.Department?.DepartmentName">
-                                @(currentEmployee?.Department != null ? currentEmployee.Department.DepartmentName : "123 Nguyễn Văn Cừ, Đà Nẵng")
-                            </span>
+                        <div class="profile-info-row d-flex align-items-center justify-content-between">
+                            <div class="info-label d-flex align-items-center gap-2 text-slate-500">
+                                <i class="bi bi-geo-alt text-slate-400"></i>
+                                <span>Phòng ban</span>
+                            </div>
+                            <div class="info-value text-truncate" style="max-width: 175px;" title="@currentEmployee?.Department?.DepartmentName">
+                                @(currentEmployee?.Department != null ? currentEmployee.Department.DepartmentName : "Phòng Kinh doanh")
+                            </div>
                         </div>
 
                     </div>
 
-                    <!-- Action Button -->
-                    <div class="pt-2">
-                        <button class="btn btn-outline-primary w-100 rounded-3 py-2 fw-semibold text-center d-flex align-items-center justify-content-center gap-1.5" style="font-size: 13px;" @onclick='() => Navigation.NavigateTo("/employees")'>
+                    <!-- Button: Xem chi tiết -->
+                    <div class="profile-action-btn-wrap pt-3">
+                        <button class="btn-profile-detail w-100" @onclick='() => Navigation.NavigateTo("/employees")'>
                             <span>Xem chi tiết</span>
                             <i class="bi bi-arrow-right"></i>
                         </button>
@@ -393,59 +441,63 @@
                 </div>
 
                 <!-- Card 2: Thông báo mới nhất -->
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 announcements-side-card">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="content-box announcements-card">
+                    <div class="announcements-header d-flex align-items-center justify-content-between mb-3.5">
                         <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-bell text-primary fs-5"></i>
-                            <h5 class="fw-bold text-slate-900 mb-0 fs-6">Thông báo mới nhất</h5>
+                            <i class="bi bi-bell-fill text-primary fs-5"></i>
+                            <h2 class="section-title mb-0">Thông báo mới nhất</h2>
                         </div>
-                        <a href="javascript:void(0)" class="text-primary text-decoration-none small fw-semibold" style="font-size: 12px;">
-                            Xem tất cả <i class="bi bi-arrow-right"></i>
+                        <a href="javascript:void(0)" class="link-view-all">
+                            Xem tất cả <i class="bi bi-arrow-right ms-0.5"></i>
                         </a>
                     </div>
 
-                    <div class="d-flex flex-column gap-3">
+                    <div class="announcements-list">
                         
-                        <!-- Item 1: Nghỉ lễ -->
-                        <div class="announcement-item pb-2.5 border-bottom">
-                            <div class="d-flex justify-content-between align-items-start gap-2">
+                        <!-- Item 1: Lịch nghỉ lễ -->
+                        <div class="announcement-row">
+                            <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="status-circle-dot bg-amber-500 flex-shrink-0"></span>
-                                    <span class="fw-bold text-slate-900" style="font-size: 13px;">Thông báo lịch nghỉ lễ 2/9</span>
+                                    <span class="bullet-dot bullet-orange"></span>
+                                    <span class="announcement-title">Thông báo lịch nghỉ lễ 2/9</span>
                                 </div>
-                                <span class="text-slate-400" style="font-size: 11px;">25/08/2026</span>
+                                <span class="announcement-date">25/08/2026</span>
                             </div>
-                            <p class="text-slate-500 mb-0 small mt-1 ms-3.5 text-truncate" style="font-size: 12px;">
+                            <div class="announcement-desc">
                                 Công ty sẽ nghỉ lễ từ ngày 01/09 - 03/09/2026...
-                            </p>
+                            </div>
                         </div>
+
+                        <div class="announcement-divider"></div>
 
                         <!-- Item 2: Quy định chấm công -->
-                        <div class="announcement-item pb-2.5 border-bottom">
-                            <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="announcement-row">
+                            <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="status-circle-dot bg-blue-600 flex-shrink-0"></span>
-                                    <span class="fw-bold text-slate-900" style="font-size: 13px;">Cập nhật quy định chấm công</span>
+                                    <span class="bullet-dot bullet-blue"></span>
+                                    <span class="announcement-title">Cập nhật quy định chấm công</span>
                                 </div>
-                                <span class="text-slate-400" style="font-size: 11px;">20/08/2026</span>
+                                <span class="announcement-date">20/08/2026</span>
                             </div>
-                            <p class="text-slate-500 mb-0 small mt-1 ms-3.5 text-truncate" style="font-size: 12px;">
+                            <div class="announcement-desc">
                                 Vui lòng tuân thủ quy định chấm công mới từ...
-                            </p>
+                            </div>
                         </div>
 
+                        <div class="announcement-divider"></div>
+
                         <!-- Item 3: Đào tạo nội bộ -->
-                        <div class="announcement-item">
-                            <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="announcement-row">
+                            <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="status-circle-dot bg-emerald-600 flex-shrink-0"></span>
-                                    <span class="fw-bold text-slate-900" style="font-size: 13px;">Lịch đào tạo nội bộ tháng 8</span>
+                                    <span class="bullet-dot bullet-green"></span>
+                                    <span class="announcement-title">Lịch đào tạo nội bộ tháng 8</span>
                                 </div>
-                                <span class="text-slate-400" style="font-size: 11px;">10/08/2026</span>
+                                <span class="announcement-date">10/08/2026</span>
                             </div>
-                            <p class="text-slate-500 mb-0 small mt-1 ms-3.5 text-truncate" style="font-size: 12px;">
+                            <div class="announcement-desc">
                                 Buổi đào tạo sẽ diễn ra vào 15/08/2026 tại...
-                            </p>
+                            </div>
                         </div>
 
                     </div>
@@ -461,14 +513,14 @@
         <!-- ========================================================================================= -->
         <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN QUẢN TRỊ VIÊN / HR (DASHBOARD CHỈ SỐ DOANH NGHIỆP) -->
         <!-- ========================================================================================= -->
-        <div class="card border-0 shadow-xs rounded-4 bg-white mb-4 p-4">
+        <div class="content-box mb-4 p-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <div>
-                    <h4 class="fw-bold text-slate-900 mb-1">Bảng Điều Khiển Quản Trị Nhân Sự & Tiền Lương</h4>
+                    <h3 class="fw-bold text-slate-900 mb-1">Bảng Điều Khiển Quản Trị Nhân Sự & Tiền Lương</h3>
                     <p class="text-muted small mb-0">Thống kê toàn bộ chỉ số nhân sự, quỹ lương và kỳ chấm công toàn doanh nghiệp.</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary btn-sm rounded-3 px-3 fw-semibold" @onclick='() => Navigation.NavigateTo("/leaves")'>
+                    <button class="btn btn-outline-secondary btn-sm rounded-3 px-3 fw-semibold" @onclick='() => Navigation.NavigateTo("/leaves")'>
                         <i class="bi bi-file-earmark-check me-1"></i>Xét duyệt đơn từ
                     </button>
                     <button class="btn btn-primary btn-sm rounded-3 px-3 fw-semibold" @onclick='() => viewMode = "Employee"'>
@@ -480,28 +532,28 @@
 
         <div class="row g-4 mb-4">
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                <div class="content-box p-4 h-100">
                     <span class="text-xs fw-bold text-slate-500 text-uppercase">Tổng nhân sự</span>
                     <div class="fs-2 fw-bold text-slate-900 mt-2">@totalEmployees</div>
                     <span class="text-slate-400 small">nhân sự hoạt động</span>
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                <div class="content-box p-4 h-100">
                     <span class="text-xs fw-bold text-slate-500 text-uppercase">Kỳ lương</span>
                     <div class="fs-2 fw-bold text-slate-900 mt-2">10/2026</div>
                     <span class="text-emerald-600 small fw-semibold">Đang xử lý</span>
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                <div class="content-box p-4 h-100">
                     <span class="text-xs fw-bold text-slate-500 text-uppercase">Tổng quỹ thực nhận</span>
                     <div class="fs-3 fw-bold text-slate-900 mt-2">@totalNetSalary.ToString("N0") ₫</div>
                     <span class="text-slate-400 small">Chi trả tháng 10/2026</span>
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-4 h-100">
+                <div class="content-box p-4 h-100">
                     <span class="text-xs fw-bold text-slate-500 text-uppercase">Khấu trừ trích nộp</span>
                     <div class="fs-3 fw-bold text-slate-900 mt-2">@totalDeductions.ToString("N0") ₫</div>
                     <span class="text-slate-400 small">Bảo hiểm & Thuế</span>
@@ -517,13 +569,13 @@
 <!-- ========================================================================================= -->
 @if (showCreateLeaveModal)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.45); backdrop-filter: blur(2px); z-index: 1055;">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.45); backdrop-filter: blur(4px); z-index: 1055;">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                 
                 <div class="modal-header bg-slate-50 border-bottom px-4 py-3">
                     <div>
-                        <h5 class="modal-title fw-bold text-slate-900 fs-6">Tạo Đơn Xin Nghỉ Phép</h5>
+                        <h4 class="modal-title fw-bold text-slate-900 fs-6">Tạo Đơn Xin Nghỉ Phép</h4>
                         <p class="text-muted small mb-0" style="font-size: 12px;">Đơn xin nghỉ sẽ được gửi trực tiếp tới Bộ phận Nhân sự để xét duyệt.</p>
                     </div>
                     <button type="button" class="btn-close" @onclick="CloseCreateLeaveModal"></button>
@@ -606,142 +658,414 @@
 }
 
 <style>
-    .dashboard-employee-wrapper {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    /* ========================================================================= */
+    /* OVERVIEW DASHBOARD MODERN CSS (TINH CHỈNH THEO PIXEL CHUẨN DESIGN B2B)    */
+    /* ========================================================================= */
+    .overview-container {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #0f172a;
     }
 
-    /* Welcome Banner Gradient: Pastel Lilac / Soft Pink to White */
-    .welcome-employee-banner {
-        background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 35%, #ffffff 100%);
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    /* 1. Welcome Banner Gradient & Layout */
+    .welcome-banner {
+        background: linear-gradient(90deg, #eff6ff 0%, #fdf2f8 55%, #faf5ff 100%);
         border: 1px solid #f1f5f9;
+        border-radius: 18px;
+        padding: 24px 32px;
+        min-height: 115px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
     }
 
-    .banner-greeting-title {
-        font-size: 1.65rem;
-        letter-spacing: -0.02em;
+    .welcome-heading {
+        font-size: 1.62rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.025em;
+        line-height: 1.2;
     }
 
-    /* Quick Action Cards */
-    .quick-action-card {
-        border: 1px solid #e2e8f0;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    .welcome-subheading {
+        font-size: 0.9rem;
+        color: #64748b;
+        font-weight: 400;
     }
 
-    .quick-action-card:hover {
+    /* 2. Three Quick Access Cards */
+    .quick-card {
+        background: #ffffff;
+        border: 1px solid #eef2f6;
+        border-radius: 16px;
+        padding: 18px 22px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .quick-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06) !important;
-        border-color: #93c5fd;
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.05);
+        border-color: #cbd5e1;
     }
 
-    .action-icon-box {
-        width: 44px;
-        height: 44px;
+    .quick-icon-circle {
+        width: 46px;
+        height: 46px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 1.25rem;
+        flex-shrink: 0;
     }
 
-    .action-card-title {
+    .icon-clock-bg {
+        background-color: #e0f2fe;
+        color: #0284c7;
+    }
+
+    .icon-file-bg {
+        background-color: #f3e8ff;
+        color: #9333ea;
+    }
+
+    .icon-payroll-bg {
+        background-color: #dcfce7;
+        color: #16a34a;
+    }
+
+    .quick-card-title {
         font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.3;
     }
 
-    .quick-action-card:hover .action-arrow {
+    .quick-card-sub {
+        font-size: 0.78rem;
+        color: #94a3b8;
+        margin-top: 2px;
+    }
+
+    .quick-arrow {
+        font-size: 1.15rem;
+        transition: transform 0.18s ease, color 0.18s ease;
+    }
+
+    .quick-card:hover .quick-arrow {
         transform: translateX(4px);
         color: #2563eb !important;
     }
 
-    .action-arrow {
-        transition: transform 0.2s ease, color 0.2s ease;
+    /* 3. Global Content Box Style */
+    .content-box {
+        background: #ffffff;
+        border: 1px solid #eef2f6;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
     }
 
-    /* Schedule Main Card */
-    .schedule-main-card {
+    .section-title {
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.01em;
+    }
+
+    /* 4. Schedule Main Card */
+    .schedule-header {
+        padding: 16px 22px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .date-display-badge {
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #334155;
+        background: #f8fafc;
         border: 1px solid #e2e8f0;
+        padding: 4px 12px;
+        border-radius: 8px;
     }
 
-    .schedule-day-item {
-        border: 1px solid transparent;
+    .btn-nav-arrow {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        padding: 0;
         transition: all 0.15s ease;
     }
 
-    .schedule-day-item:hover {
-        background-color: #ffffff;
-        border-color: #e2e8f0;
+    .btn-nav-arrow:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #cbd5e1;
     }
 
-    .day-item-active {
-        background-color: #f0f9ff !important;
-        border-color: #bae6fd !important;
+    .schedule-days-pane {
+        padding: 14px 12px;
+        border-right: 1px solid #f1f5f9;
+        background: #ffffff;
     }
 
-    .day-active-pill {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background-color: #0284c7;
+    .schedule-day-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 12px;
+        border-radius: 10px;
+        transition: background-color 0.15s ease;
     }
 
-    /* Schedule Timeline */
-    .schedule-timeline::before {
-        content: '';
-        position: absolute;
-        top: 8px;
-        bottom: 8px;
-        left: 4.5px;
-        width: 2px;
-        background-color: #e2e8f0;
+    .schedule-day-row:hover {
+        background-color: #f8fafc;
     }
 
-    .timeline-slot-item {
-        padding-left: 18px;
+    .schedule-day-row.is-active {
+        background-color: #eff6ff !important;
     }
 
-    .timeline-slot-item::before {
-        content: '';
-        position: absolute;
-        top: 6px;
-        left: -11.5px;
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background-color: #ffffff;
-        border: 2px solid #94a3b8;
+    .day-icon-circle-sm {
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .timeline-time-badge {
-        font-size: 12px;
+    .day-name {
+        font-size: 0.84rem;
+        line-height: 1.2;
+    }
+
+    .day-date {
+        font-size: 0.72rem;
+        margin-top: 1px;
+    }
+
+    .schedule-timeline-pane {
+        padding: 22px 26px;
+    }
+
+    .timeline-slot {
+        padding: 4px 0;
+    }
+
+    .timeline-slot-time {
+        width: 115px;
+        font-size: 0.84rem;
+        font-weight: 600;
         color: #334155;
-    }
-
-    .status-circle-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        display: inline-block;
         flex-shrink: 0;
     }
 
-    /* Quote Motivation Card */
-    .quote-motivation-card {
-        background: linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%);
-        border: 1px solid #e2e8f0;
+    .timeline-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 16px;
+        flex-shrink: 0;
     }
 
-    .quote-text {
-        font-size: 0.92rem;
-        color: #475569;
-        line-height: 1.5;
+    .dot-blue { background-color: #2563eb; }
+    .dot-green { background-color: #10b981; }
+    .dot-purple { background-color: #9333ea; }
+
+    .timeline-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.3;
     }
 
-    /* Profile Side Card */
-    .profile-side-card, .announcements-side-card {
-        border: 1px solid #e2e8f0;
+    .timeline-sub {
+        font-size: 0.76rem;
+        color: #64748b;
+        margin-top: 2px;
     }
 
-    .cursor-pointer {
-        cursor: pointer;
+    .timeline-separator {
+        height: 1px;
+        background-color: #f1f5f9;
+        margin: 14px 0;
+    }
+
+    .attendance-status-banner {
+        background-color: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: 10px;
+        padding: 10px 14px;
+    }
+
+    /* 5. Motivation Quote Card Chuẩn Mockup */
+    .motivation-quote-card {
+        background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 40%, #eff6ff 100%);
+        border: 1px solid #e9d5ff;
+        border-radius: 16px;
+        padding: 18px 24px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
+    }
+
+    .quote-mark {
+        font-size: 2.2rem;
+        line-height: 0.8;
+        font-weight: 800;
+        color: #7c3aed;
+        font-family: serif;
+    }
+
+    .quote-lines {
+        font-size: 0.89rem;
+        font-weight: 600;
+        color: #4338ca;
+        line-height: 1.45;
+    }
+
+    /* 6. Profile Side Card */
+    .profile-card {
+        padding: 22px 24px;
+    }
+
+    .profile-avatar-frame {
+        width: 86px;
+        height: 86px;
+        border-radius: 50%;
+        padding: 3px;
+        background: #f1f5f9;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        display: inline-block;
+    }
+
+    .avatar-photo {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .profile-user-name {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .profile-user-role {
+        font-size: 0.82rem;
+        color: #64748b;
+    }
+
+    .profile-user-code {
+        font-size: 0.78rem;
+        color: #64748b;
+    }
+
+    .profile-info-list {
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .profile-info-row {
+        padding: 7px 0;
+        font-size: 0.83rem;
+    }
+
+    .info-label {
+        font-size: 0.82rem;
+    }
+
+    .info-value {
+        font-weight: 500;
+        color: #0f172a;
+        font-size: 0.82rem;
+    }
+
+    .btn-profile-detail {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        padding: 9px 0;
+        background: #ffffff;
+        color: #2563eb;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+
+    .btn-profile-detail:hover {
+        background: #eff6ff;
+        border-color: #93c5fd;
+        color: #1d4ed8;
+    }
+
+    /* 7. Announcements Side Card */
+    .announcements-card {
+        padding: 22px 24px;
+    }
+
+    .link-view-all {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #2563eb;
+        text-decoration: none;
+    }
+
+    .link-view-all:hover {
+        text-decoration: underline;
+    }
+
+    .announcement-row {
+        padding: 2px 0;
+    }
+
+    .bullet-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .bullet-orange { background-color: #f97316; }
+    .bullet-blue   { background-color: #2563eb; }
+    .bullet-green  { background-color: #16a34a; }
+
+    .announcement-title {
+        font-size: 0.84rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .announcement-date {
+        font-size: 0.74rem;
+        color: #94a3b8;
+        white-space: nowrap;
+    }
+
+    .announcement-desc {
+        font-size: 0.77rem;
+        color: #64748b;
+        margin-left: 16px;
+        margin-top: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .announcement-divider {
+        height: 1px;
+        background-color: #f1f5f9;
+        margin: 11px 0;
     }
 </style>
 
