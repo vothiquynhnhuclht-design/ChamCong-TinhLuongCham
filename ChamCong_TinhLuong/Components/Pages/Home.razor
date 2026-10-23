@@ -3,6 +3,7 @@
 @inject IAttendanceRepository AttendanceRepo
 @inject IDepartmentRepository DepartmentRepo
 @inject IPayslipRepository PayslipRepo
+@inject ILeaveRequestRepository LeaveRepo
 @inject UserSessionService UserSession
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -19,59 +20,69 @@
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
                     <i class="bi bi-shield-check me-1"></i>Tài khoản Quản trị
                 </span>
-                <span class="text-muted small">Bạn đang xem giao diện Tổng quan theo phân quyền:</span>
+                <span class="text-muted small">Xem trước bảng điều khiển theo phân quyền người dùng:</span>
             </div>
             <div class="btn-group btn-group-sm" role="group">
-                <button type="button" class="btn @(viewMode == "Employee" ? "btn-primary" : "btn-outline-secondary") px-3 fw-semibold" @onclick='() => viewMode = "Employee"'>
+                <button type="button" class="btn @(viewMode == "Employee" ? "btn-primary shadow-xs" : "btn-outline-secondary") px-3 fw-semibold" @onclick='() => viewMode = "Employee"'>
                     <i class="bi bi-person me-1"></i>Giao diện Nhân viên
                 </button>
-                <button type="button" class="btn @(viewMode == "Admin" ? "btn-primary" : "btn-outline-secondary") px-3 fw-semibold" @onclick='() => viewMode = "Admin"'>
+                <button type="button" class="btn @(viewMode == "Admin" ? "btn-primary shadow-xs" : "btn-outline-secondary") px-3 fw-semibold" @onclick='() => viewMode = "Admin"'>
                     <i class="bi bi-bar-chart-steps me-1"></i>Giao diện Quản trị / HR
                 </button>
             </div>
         </div>
     }
 
+    <!-- Thông báo kết quả nộp đơn nghỉ phép thành công -->
+    @if (!string.IsNullOrEmpty(alertSuccessMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 py-2.5 px-3 rounded-3 mb-3 shadow-2xs" role="alert">
+            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+            <div>
+                <strong>Thành công:</strong> @alertSuccessMessage
+            </div>
+            <button type="button" class="btn-close" @onclick="() => alertSuccessMessage = null"></button>
+        </div>
+    }
+
     @if (viewMode == "Employee" || UserSession.IsEmployee)
     {
         <!-- ========================================================================================= -->
-        <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN NHÂN VIÊN (CHUẨN 100% THEO THIẾT KẾ ĐẶC TẢ) -->
+        <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN NHÂN VIÊN (MINIMALIST B2B - ĐẸP, RÕ RÀNG & DỄ NHÌN) -->
         <!-- ========================================================================================= -->
 
         <!-- 1. BANNER CHÀO MỪNG (GREETING BANNER) -->
         <div class="card border-0 rounded-4 mb-4 overflow-hidden shadow-xs welcome-employee-banner">
             <div class="card-body p-4 p-lg-4 d-flex align-items-center justify-content-between position-relative">
                 <div class="z-1">
-                    <h2 class="fw-bolder text-slate-900 mb-1.5 tracking-tight banner-greeting-title">
+                    <div class="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill bg-white/80 border border-slate-200/60 text-slate-600 small mb-2 shadow-2xs" style="font-size: 11px;">
+                        <span class="status-circle-dot bg-emerald-500"></span>
+                        <span class="fw-semibold">Cổng thông tin tự phục vụ nhân sự (ESS)</span>
+                    </div>
+                    <h2 class="fw-bolder text-slate-900 mb-1 tracking-tight banner-greeting-title">
                         Xin chào, @(string.IsNullOrEmpty(currentEmployee?.FullName) ? (string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Nguyễn Thị Mai" : UserSession.CurrentEmployeeName) : currentEmployee.FullName)!
                     </h2>
                     <p class="text-slate-500 mb-0 small fs-6">
-                        Chúc bạn một ngày làm việc hiệu quả và nhiều năng lượng!
+                        Chúc bạn một ngày làm việc hiệu quả và tràn đầy năng lượng!
                     </p>
                 </div>
 
                 <!-- Vector Illustration (Woman working at desk with laptop and plant) -->
                 <div class="welcome-employee-art d-none d-md-block pe-lg-3">
-                    <svg width="220" height="110" viewBox="0 0 220 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="150" cy="55" r="45" fill="#F1F5F9" opacity="0.8" />
-                        <!-- Plant -->
-                        <path d="M185 85C185 68 193 60 198 56C203 60 211 68 211 85" fill="#38BDF8" opacity="0.7" />
-                        <line x1="198" y1="56" x2="198" y2="85" stroke="#0284C7" stroke-width="2" />
-                        <!-- Desk -->
-                        <rect x="55" y="86" width="145" height="4" rx="2" fill="#CBD5E1" />
-                        <!-- Character Body -->
-                        <path d="M115 65C115 52 125 46 135 46C145 46 155 52 155 65L160 86H110L115 65Z" fill="#3B82F6" />
-                        <!-- Head & Hair -->
-                        <circle cx="135" cy="33" r="11" fill="#FBD5BD" />
-                        <path d="M126 31C126 21 132 17 138 17C146 17 148 23 146 31C143 29 138 29 134 33Z" fill="#1E293B" />
-                        <path d="M126 31C124 39 126 47 130 51" stroke="#1E293B" stroke-width="4" stroke-linecap="round" />
-                        <!-- Laptop -->
-                        <rect x="125" y="73" width="28" height="13" rx="2" fill="#0F172A" />
-                        <rect x="128" y="75" width="22" height="9" rx="1" fill="#BAE6FD" />
-                        <line x1="120" y1="86" x2="158" y2="86" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" />
-                        <!-- Floating Soft Lilac Circles -->
-                        <circle cx="50" cy="40" r="14" fill="#E9D5FF" opacity="0.6" />
-                        <circle cx="75" cy="25" r="7" fill="#FBCFE8" opacity="0.6" />
+                    <svg width="220" height="105" viewBox="0 0 220 105" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="150" cy="52" r="42" fill="#F1F5F9" opacity="0.8" />
+                        <path d="M185 82C185 66 193 58 198 54C203 58 211 66 211 82" fill="#38BDF8" opacity="0.7" />
+                        <line x1="198" y1="54" x2="198" y2="82" stroke="#0284C7" stroke-width="2" />
+                        <rect x="55" y="84" width="145" height="4" rx="2" fill="#CBD5E1" />
+                        <path d="M115 63C115 50 125 44 135 44C145 44 155 50 155 63L160 84H110L115 63Z" fill="#3B82F6" />
+                        <circle cx="135" cy="31" r="11" fill="#FBD5BD" />
+                        <path d="M126 29C126 19 132 15 138 15C146 15 148 21 146 29C143 27 138 27 134 31Z" fill="#1E293B" />
+                        <path d="M126 29C124 37 126 45 130 49" stroke="#1E293B" stroke-width="4" stroke-linecap="round" />
+                        <rect x="125" y="71" width="28" height="13" rx="2" fill="#0F172A" />
+                        <rect x="128" y="73" width="22" height="9" rx="1" fill="#BAE6FD" />
+                        <line x1="120" y1="84" x2="158" y2="84" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" />
+                        <circle cx="50" cy="38" r="13" fill="#E9D5FF" opacity="0.6" />
+                        <circle cx="75" cy="24" r="7" fill="#FBCFE8" opacity="0.6" />
                     </svg>
                 </div>
             </div>
@@ -79,6 +90,7 @@
 
         <!-- 2. BA THẺ THAO TÁC NHANH (3 QUICK ACCESS CARDS) -->
         <div class="row g-3 mb-4">
+            
             <!-- Card 1: Chấm công -->
             <div class="col-12 col-md-4">
                 <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick='() => Navigation.NavigateTo("/attendance")'>
@@ -97,9 +109,9 @@
                 </div>
             </div>
 
-            <!-- Card 2: Đơn xin nghỉ phép -->
+            <!-- Card 2: Đơn xin nghỉ phép (CLICK ĐỂ MỞ MODAL TẠO ĐƠN NGAY TRÊN TRANG) -->
             <div class="col-12 col-md-4">
-                <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick='() => Navigation.NavigateTo("/attendance")'>
+                <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 quick-action-card h-100 cursor-pointer" @onclick="OpenCreateLeaveModal">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-3">
                             <div class="action-icon-box bg-purple-50 text-purple-600">
@@ -110,7 +122,10 @@
                                 <p class="text-slate-400 small mb-0" style="font-size: 12.5px;">Tạo đơn nghỉ, theo dõi trạng thái</p>
                             </div>
                         </div>
-                        <i class="bi bi-arrow-right text-slate-400 fs-5 action-arrow"></i>
+                        <div class="d-flex align-items-center gap-1.5">
+                            <span class="badge bg-purple-subtle text-purple-700 rounded-pill px-2 py-0.5 small d-none d-xl-inline">Tạo ngay</span>
+                            <i class="bi bi-arrow-right text-slate-400 fs-5 action-arrow"></i>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -132,6 +147,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
 
         <!-- 3. KHU VỰC NỘI DUNG CHÍNH (8 CỘT TRÁI - 4 CỘT PHẢI) -->
@@ -174,7 +190,6 @@
                                     @foreach (var day in currentWeekDays)
                                     {
                                         bool isSelected = day.Date == selectedDate.Date;
-                                        bool isWeekend = day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday;
 
                                         <div class="schedule-day-item p-2.5 rounded-3 d-flex align-items-center justify-content-between cursor-pointer @(isSelected ? "day-item-active" : "")"
                                              @onclick="() => SelectDay(day)">
@@ -221,7 +236,7 @@
                                                     <span class="fw-bold text-slate-900 small">Làm việc tại văn phòng</span>
                                                 </div>
                                                 <div class="text-slate-400 small mt-1 ms-3.5" style="font-size: 11.5px;">
-                                                    <i class="bi bi-geo-alt me-1"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng Kinh doanh")
+                                                    <i class="bi bi-geo-alt me-1"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng làm việc")
                                                 </div>
                                             </div>
                                         </div>
@@ -249,7 +264,7 @@
                                                     <span class="fw-bold text-slate-900 small">Làm việc tại văn phòng</span>
                                                 </div>
                                                 <div class="text-slate-400 small mt-1 ms-3.5" style="font-size: 11.5px;">
-                                                    <i class="bi bi-geo-alt me-1"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng Kinh doanh")
+                                                    <i class="bi bi-geo-alt me-1"></i>@(currentEmployee?.Department?.DepartmentName ?? "Phòng làm việc")
                                                 </div>
                                             </div>
                                         </div>
@@ -279,7 +294,7 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="quote-graphic-icon flex-shrink-0">
                             <!-- 3D Calendar/Clock icon vector -->
-                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                            <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
                                 <rect x="6" y="10" width="36" height="32" rx="8" fill="#F87171" />
                                 <rect x="6" y="10" width="36" height="12" rx="8" fill="#EF4444" />
                                 <circle cx="16" cy="7" r="2.5" fill="#CBD5E1" />
@@ -443,16 +458,23 @@
     }
     else
     {
-        <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN QUẢN TRỊ VIÊN / HR (GIỮ NGUYÊN BẢN ADMIN DASHBOARD) -->
+        <!-- ========================================================================================= -->
+        <!-- GIAO DIỆN TỔNG QUAN PHÂN QUYỀN QUẢN TRỊ VIÊN / HR (DASHBOARD CHỈ SỐ DOANH NGHIỆP) -->
+        <!-- ========================================================================================= -->
         <div class="card border-0 shadow-xs rounded-4 bg-white mb-4 p-4">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <div>
-                    <h4 class="fw-bold text-dark mb-1">Bảng Điều Khiển Quản Trị Nhân Sự & Lương</h4>
-                    <p class="text-muted small mb-0">Thống kê toàn bộ chỉ số nhân sự, quỹ lương và kỳ chấm công doanh nghiệp.</p>
+                    <h4 class="fw-bold text-slate-900 mb-1">Bảng Điều Khiển Quản Trị Nhân Sự & Tiền Lương</h4>
+                    <p class="text-muted small mb-0">Thống kê toàn bộ chỉ số nhân sự, quỹ lương và kỳ chấm công toàn doanh nghiệp.</p>
                 </div>
-                <button class="btn btn-primary btn-sm rounded-3 px-3 fw-semibold" @onclick='() => viewMode = "Employee"'>
-                    <i class="bi bi-eye me-1"></i>Xem giao diện nhân viên
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary btn-sm rounded-3 px-3 fw-semibold" @onclick='() => Navigation.NavigateTo("/leaves")'>
+                        <i class="bi bi-file-earmark-check me-1"></i>Xét duyệt đơn từ
+                    </button>
+                    <button class="btn btn-primary btn-sm rounded-3 px-3 fw-semibold" @onclick='() => viewMode = "Employee"'>
+                        <i class="bi bi-eye me-1"></i>Xem giao diện nhân viên
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -490,8 +512,100 @@
 
 </div>
 
+<!-- ========================================================================================= -->
+<!-- MODAL TẠO ĐƠN XIN NGHỈ PHÉP TÍCH HỢP TRỰC TIẾP TRÊN TRANG TỔNG QUAN -->
+<!-- ========================================================================================= -->
+@if (showCreateLeaveModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.45); backdrop-filter: blur(2px); z-index: 1055;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                
+                <div class="modal-header bg-slate-50 border-bottom px-4 py-3">
+                    <div>
+                        <h5 class="modal-title fw-bold text-slate-900 fs-6">Tạo Đơn Xin Nghỉ Phép</h5>
+                        <p class="text-muted small mb-0" style="font-size: 12px;">Đơn xin nghỉ sẽ được gửi trực tiếp tới Bộ phận Nhân sự để xét duyệt.</p>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseCreateLeaveModal"></button>
+                </div>
+
+                <div class="modal-body p-4 space-y-3">
+                    @if (!string.IsNullOrEmpty(formLeaveError))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
+                            <i class="bi bi-exclamation-circle me-1"></i>@formLeaveError
+                        </div>
+                    }
+
+                    <!-- 1. Loại nghỉ phép -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-slate-700 mb-1">Loại nghỉ phép <span class="text-danger">*</span></label>
+                        <select class="form-select text-sm rounded-3" @bind="modalLeaveType">
+                            <option value="@LeaveType.Paid">Nghỉ phép năm (Có hưởng lương - Hạn mức khả dụng)</option>
+                            <option value="@LeaveType.Unpaid">Nghỉ việc riêng không hưởng lương</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. Tuỳ chọn nghỉ nửa ngày -->
+                    <div class="p-2.5 rounded-3 bg-light border d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <span class="small fw-semibold text-slate-800 d-block">Nghỉ nửa ngày (0.5 công)</span>
+                            <span class="text-muted" style="font-size: 11px;">Áp dụng cho buổi sáng hoặc buổi chiều</span>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" @bind="modalIsHalfDay" @bind:after="OnModalHalfDayChanged" style="cursor: pointer;">
+                        </div>
+                    </div>
+
+                    <!-- 3. Khoảng ngày -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-slate-700 mb-1">Từ ngày <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control text-sm rounded-3" @bind="modalStartDate" @bind:after="CalculateModalDays" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-slate-700 mb-1">Đến ngày <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control text-sm rounded-3" @bind="modalEndDate" @bind:after="CalculateModalDays" disabled="@modalIsHalfDay" />
+                        </div>
+                    </div>
+
+                    <!-- 4. Số công ước tính -->
+                    <div class="p-2.5 rounded-3 bg-primary-subtle text-primary border border-primary-subtle d-flex justify-content-between align-items-center small mb-3">
+                        <span class="fw-medium">Thời lượng đăng ký nghỉ:</span>
+                        <span class="fw-bold fs-6">@modalCalculatedDays.ToString("0.#") công</span>
+                    </div>
+
+                    <!-- 5. Lý do -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-slate-700 mb-1">Lý do xin nghỉ <span class="text-danger">*</span></label>
+                        <textarea class="form-control text-sm rounded-3" rows="3" placeholder="Nhập chi tiết lý do xin nghỉ (giải quyết việc gia đình, khám bệnh...)" @bind="modalReason"></textarea>
+                    </div>
+
+                    <!-- 6. Người duyệt chỉ định -->
+                    <div class="p-2.5 rounded-3 bg-slate-50 border d-flex align-items-center gap-2.5">
+                        <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 11px;">
+                            TB
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="fw-bold text-slate-900 small text-truncate">Trần Thị Bình (HR Manager)</div>
+                            <div class="text-muted" style="font-size: 11px;">Quản lý trực tiếp phê duyệt</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-slate-50 border-top px-4 py-2.5 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border fw-semibold rounded-3 px-3" @onclick="CloseCreateLeaveModal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary fw-semibold rounded-3 px-4 shadow-xs" @onclick="SubmitModalLeaveRequestAsync">
+                        <i class="bi bi-send me-1"></i>Gửi đơn duyệt
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
 <style>
-    /* Styling chính xác theo Screenshot của User */
     .dashboard-employee-wrapper {
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
@@ -622,11 +736,7 @@
     }
 
     /* Profile Side Card */
-    .profile-side-card {
-        border: 1px solid #e2e8f0;
-    }
-
-    .announcements-side-card {
+    .profile-side-card, .announcements-side-card {
         border: 1px solid #e2e8f0;
     }
 
@@ -636,7 +746,7 @@
 </style>
 
 @code {
-    private string viewMode = "Employee"; // Mặc định mở giao diện Nhân viên theo yêu cầu
+    private string viewMode = "Employee";
     private Employee? currentEmployee;
     private DateTime selectedDate = DateTime.Today;
     private List<DateTime> currentWeekDays = new();
@@ -648,24 +758,28 @@
     private decimal totalNetSalary = 0;
     private decimal totalDeductions = 0;
 
+    // Modal Đơn xin nghỉ phép
+    private bool showCreateLeaveModal = false;
+    private LeaveType modalLeaveType = LeaveType.Paid;
+    private bool modalIsHalfDay = false;
+    private DateTime modalStartDate = DateTime.Today;
+    private DateTime modalEndDate = DateTime.Today;
+    private double modalCalculatedDays = 1.0;
+    private string modalReason = "";
+    private string? formLeaveError;
+    private string? alertSuccessMessage;
+
     protected override async Task OnInitializedAsync()
     {
-        // 1. Xác định chế độ hiển thị
         if (UserSession.IsEmployee)
         {
             viewMode = "Employee";
         }
 
-        // 2. Tải thông tin nhân viên đăng nhập thực tế từ CSDL SQL Server
         await LoadEmployeeDataAsync();
-
-        // 3. Khởi tạo danh sách 7 ngày trong tuần
         BuildWeekDays();
-
-        // 4. Tải dữ liệu chấm công thực tế
         await LoadAttendanceDataAsync();
 
-        // 5. Nếu là Admin, tải thêm dữ liệu tổng hợp
         if (UserSession.IsAdminHr)
         {
             var allEmps = await EmployeeRepo.GetAllEmployeesAsync();
@@ -701,7 +815,6 @@
 
     private void BuildWeekDays()
     {
-        // Lấy ngày Thứ 2 đầu tuần của selectedDate
         int diff = (7 + (selectedDate.DayOfWeek - DayOfWeek.Monday)) % 7;
         DateTime monday = selectedDate.AddDays(-diff).Date;
 
@@ -757,6 +870,100 @@
             DayOfWeek.Sunday => "Chủ nhật",
             _ => ""
         };
+    }
+
+    // Modal Tạo đơn nghỉ phép
+    private void OpenCreateLeaveModal()
+    {
+        modalStartDate = DateTime.Today;
+        modalEndDate = DateTime.Today;
+        modalIsHalfDay = false;
+        modalReason = "";
+        formLeaveError = null;
+        CalculateModalDays();
+        showCreateLeaveModal = true;
+    }
+
+    private void CloseCreateLeaveModal()
+    {
+        showCreateLeaveModal = false;
+    }
+
+    private void OnModalHalfDayChanged()
+    {
+        if (modalIsHalfDay)
+        {
+            modalEndDate = modalStartDate;
+            modalCalculatedDays = 0.5;
+        }
+        else
+        {
+            CalculateModalDays();
+        }
+    }
+
+    private void CalculateModalDays()
+    {
+        if (modalIsHalfDay)
+        {
+            modalEndDate = modalStartDate;
+            modalCalculatedDays = 0.5;
+            return;
+        }
+
+        if (modalEndDate < modalStartDate)
+        {
+            modalCalculatedDays = 0;
+            return;
+        }
+
+        int count = 0;
+        var cur = modalStartDate.Date;
+        while (cur <= modalEndDate.Date)
+        {
+            if (cur.DayOfWeek != DayOfWeek.Saturday && cur.DayOfWeek != DayOfWeek.Sunday)
+            {
+                count++;
+            }
+            cur = cur.AddDays(1);
+        }
+        modalCalculatedDays = count;
+    }
+
+    private async Task SubmitModalLeaveRequestAsync()
+    {
+        formLeaveError = null;
+        if (string.IsNullOrWhiteSpace(modalReason))
+        {
+            formLeaveError = "Vui lòng nhập lý do xin nghỉ phép.";
+            return;
+        }
+
+        if (modalCalculatedDays <= 0)
+        {
+            formLeaveError = "Khoảng thời gian nghỉ không hợp lệ.";
+            return;
+        }
+
+        int empId = currentEmployee?.Id ?? (UserSession.CurrentEmployeeId ?? 1);
+
+        var request = new LeaveRequest
+        {
+            EmployeeId = empId,
+            StartDate = modalStartDate.Date,
+            EndDate = modalIsHalfDay ? modalStartDate.Date : modalEndDate.Date,
+            NumberOfDays = modalCalculatedDays,
+            LeaveType = modalLeaveType,
+            Reason = modalReason.Trim(),
+            Status = LeaveRequestStatus.Pending,
+            ApprovedBy = "Trần Thị Bình (HR Manager)",
+            CreatedAt = DateTime.Now
+        };
+
+        await LeaveRepo.AddLeaveRequestAsync(request);
+        alertSuccessMessage = $"Đơn xin nghỉ phép ({modalCalculatedDays} ngày) đã được gửi thành công đến Quản lý / HR xét duyệt!";
+        
+        CloseCreateLeaveModal();
     }
 
     private async void OnSessionChanged()

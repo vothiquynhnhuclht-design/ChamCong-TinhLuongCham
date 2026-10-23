@@ -1,0 +1,513 @@
+@page "/leaves"
+@inject ILeaveRequestRepository LeaveRepo
+@inject IEmployeeRepository EmployeeRepo
+@inject UserSessionService UserSession
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Quản Lý Đơn Từ & Nghỉ Phép - HRM Enterprise</PageTitle>
+
+<div class="container-fluid py-3">
+
+    <!-- Header Section -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="d-inline-flex align-items-center justify-center p-2 rounded-3 bg-primary-subtle text-primary border border-primary-subtle">
+                    <i class="bi bi-calendar2-check fs-5"></i>
+                </span>
+                <h3 class="fw-bold text-slate-900 mb-0">Quản Lý Đơn Từ & Nghỉ Phép</h3>
+            </div>
+            <p class="text-muted small mt-1 mb-0">
+                @(UserSession.IsAdminHr 
+                    ? "Xét duyệt và quản lý toàn bộ đơn xin nghỉ phép của nhân sự công ty." 
+                    : "Theo dõi số dư ngày phép, nộp đơn trực tuyến và nhận phản hồi phê duyệt từ quản lý.")
+            </p>
+        </div>
+
+        <button class="btn btn-primary fw-semibold px-3 py-2 rounded-3 shadow-xs d-flex align-items-center gap-2" @onclick="OpenCreateModal">
+            <i class="bi bi-plus-lg"></i>
+            <span>Tạo đơn xin nghỉ</span>
+        </button>
+    </div>
+
+    <!-- 1. KHU VỰC KPI SỐ DƯ PHÉP (LEAVE BALANCES) -->
+    <div class="row g-3 mb-4">
+        <!-- Phép năm còn lại -->
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-xs fw-bold text-slate-500 text-uppercase tracking-wider">Phép năm còn lại</span>
+                    <span class="badge bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-pill px-2.5 py-1">Khả dụng</span>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <span class="fs-2 fw-bold text-slate-900">@remainingAnnualDays.ToString("0.#")</span>
+                    <span class="text-slate-400 small fw-medium">/ 12 ngày</span>
+                </div>
+                <div class="mt-2.5">
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-emerald-500" role="progressbar" style="width: @((remainingAnnualDays / 12.0) * 100)%;"></div>
+                    </div>
+                    <span class="text-slate-400 small mt-1 d-block" style="font-size: 11px;">Đã sử dụng: @usedAnnualDays.ToString("0.#") ngày trong năm</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nghỉ ốm -->
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-xs fw-bold text-slate-500 text-uppercase tracking-wider">Nghỉ ốm (Hưởng BHXH)</span>
+                    <span class="badge bg-amber-50 text-amber-700 border border-amber-200 rounded-pill px-2.5 py-1">Chế độ</span>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <span class="fs-2 fw-bold text-slate-900">@usedSickDays.ToString("0.#")</span>
+                    <span class="text-slate-400 small fw-medium">ngày</span>
+                </div>
+                <div class="mt-2.5">
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-amber-500" role="progressbar" style="width: 15%;"></div>
+                    </div>
+                    <span class="text-slate-400 small mt-1 d-block" style="font-size: 11px;">Theo quy định Luật BHXH Điều 26</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nghỉ không lương -->
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-xs rounded-4 bg-white p-3.5 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-xs fw-bold text-slate-500 text-uppercase tracking-wider">Nghỉ không lương</span>
+                    <span class="badge bg-slate-100 text-slate-700 border border-slate-200 rounded-pill px-2.5 py-1">Trừ công</span>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <span class="fs-2 fw-bold text-slate-900">@usedUnpaidDays.ToString("0.#")</span>
+                    <span class="text-slate-400 small fw-medium">ngày</span>
+                </div>
+                <div class="mt-2.5">
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-slate-400" role="progressbar" style="width: 0%;"></div>
+                    </div>
+                    <span class="text-slate-400 small mt-1 d-block" style="font-size: 11px;">Không tính lương & chuyên cần</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(alertSuccess))
+    {
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 py-2.5 px-3 rounded-3" role="alert">
+            <i class="bi bi-check-circle-fill text-success"></i>
+            <div>@alertSuccess</div>
+            <button type="button" class="btn-close" @onclick="() => alertSuccess = null"></button>
+        </div>
+    }
+
+    <!-- 2. DANH SÁCH LỊCH SỬ ĐƠN TỪ (LEAVE REQUEST HISTORY) -->
+    <div class="card border-0 shadow-xs rounded-4 bg-white overflow-hidden">
+        
+        <!-- Filter Bar -->
+        <div class="card-header bg-slate-50/50 border-bottom py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2 overflow-x-auto pb-1 pb-md-0">
+                <button class="btn btn-sm @(currentFilter == "all" ? "btn-primary shadow-xs" : "btn-light border text-slate-600") rounded-pill px-3 fw-semibold" @onclick='() => currentFilter = "all"'>
+                    Tất cả (@allRequests.Count)
+                </button>
+                <button class="btn btn-sm @(currentFilter == "Pending" ? "btn-warning text-dark shadow-xs" : "btn-light border text-slate-600") rounded-pill px-3 fw-semibold" @onclick='() => currentFilter = "Pending"'>
+                    Chờ duyệt (@allRequests.Count(r => r.Status == LeaveRequestStatus.Pending))
+                </button>
+                <button class="btn btn-sm @(currentFilter == "Approved" ? "btn-success shadow-xs" : "btn-light border text-slate-600") rounded-pill px-3 fw-semibold" @onclick='() => currentFilter = "Approved"'>
+                    Đã duyệt (@allRequests.Count(r => r.Status == LeaveRequestStatus.Approved))
+                </button>
+                <button class="btn btn-sm @(currentFilter == "Rejected" ? "btn-danger shadow-xs" : "btn-light border text-slate-600") rounded-pill px-3 fw-semibold" @onclick='() => currentFilter = "Rejected"'>
+                    Bị từ chối (@allRequests.Count(r => r.Status == LeaveRequestStatus.Rejected))
+                </button>
+            </div>
+
+            <span class="text-slate-400 small">
+                <i class="bi bi-clock-history me-1"></i>Đồng bộ trực tiếp từ SQL Server
+            </span>
+        </div>
+
+        <!-- Request Items -->
+        <div class="card-body p-0">
+            @if (!filteredRequests.Any())
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-1 text-slate-300 d-block mb-2"></i>
+                    <h6 class="fw-bold text-slate-700">Chưa có đơn nghỉ phép nào trong mục này</h6>
+                    <p class="small text-slate-400 mb-0">Bấm nút "+ Tạo đơn xin nghỉ" ở trên để gửi đơn mới.</p>
+                </div>
+            }
+            else
+            {
+                <div class="divide-y divide-slate-100">
+                    @foreach (var item in filteredRequests)
+                    {
+                        <div class="p-4 hover-bg-slate-50 transition-colors border-bottom d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+                            
+                            <!-- Left Info -->
+                            <div class="flex-grow-1">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-1.5">
+                                    <span class="badge @(item.LeaveType == LeaveType.Paid ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-700 border border-slate-200") px-2.5 py-1 fw-semibold">
+                                        @(item.LeaveType == LeaveType.Paid ? "Phép có lương" : "Nghỉ không lương")
+                                    </span>
+                                    <span class="fw-bold text-slate-900 fs-6">
+                                        @item.StartDate.ToString("dd/MM/yyyy") @(item.StartDate != item.EndDate ? $"đến {item.EndDate.ToString("dd/MM/yyyy")}" : "")
+                                    </span>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5">
+                                        @item.NumberOfDays.ToString("0.#") công
+                                    </span>
+                                    @if (UserSession.IsAdminHr && item.Employee != null)
+                                    {
+                                        <span class="badge bg-light text-slate-800 border ms-1">
+                                            👤 @item.Employee.FullName (@item.Employee.EmployeeCode)
+                                        </span>
+                                    }
+                                </div>
+
+                                <p class="text-slate-600 small mb-1.5">
+                                    <strong class="text-slate-700">Lý do:</strong> "@item.Reason"
+                                </p>
+
+                                <div class="d-flex flex-wrap align-items-center gap-3 text-slate-400 small" style="font-size: 11.5px;">
+                                    <span><i class="bi bi-clock me-1"></i>Nộp lúc: @item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                                    <span>•</span>
+                                    <span><i class="bi bi-person-check me-1"></i>Người duyệt: <strong class="text-slate-700">@(string.IsNullOrEmpty(item.ApprovedBy) ? "Trần Thị Bình (HR Manager)" : item.ApprovedBy)</strong></span>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(item.Note))
+                                {
+                                    <div class="mt-2 p-2.5 rounded-3 bg-light border text-slate-700 small" style="font-size: 12px;">
+                                        <strong>Phản hồi của Quản lý / HR:</strong> @item.Note
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Right Status Badge & Actions -->
+                            <div class="d-flex flex-md-column align-items-end justify-content-between gap-2 flex-shrink-0">
+                                @if (item.Status == LeaveRequestStatus.Pending)
+                                {
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill">
+                                        <span class="status-dot-pulse bg-warning me-1"></span> Chờ duyệt
+                                    </span>
+
+                                    @if (!UserSession.IsAdminHr)
+                                    {
+                                        <button class="btn btn-link text-danger p-0 small text-decoration-none" @onclick="() => CancelRequest(item.Id)">
+                                            <i class="bi bi-trash3 me-1"></i>Hủy đơn
+                                        </button>
+                                    }
+                                }
+                                else if (item.Status == LeaveRequestStatus.Approved)
+                                {
+                                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle px-2.5 py-1 rounded-pill">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Đã duyệt
+                                    </span>
+                                }
+                                else if (item.Status == LeaveRequestStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle px-2.5 py-1 rounded-pill">
+                                        <i class="bi bi-x-circle-fill me-1"></i> Bị từ chối
+                                    </span>
+                                }
+
+                                <!-- Nút Phê duyệt / Từ chối cho Quản trị viên HR -->
+                                @if (UserSession.IsAdminHr && item.Status == LeaveRequestStatus.Pending)
+                                {
+                                    <div class="btn-group btn-group-sm mt-1">
+                                        <button class="btn btn-outline-success btn-sm px-2.5 py-1" title="Duyệt đơn" @onclick="() => ReviewRequest(item, true)">
+                                            <i class="bi bi-check-lg"></i> Duyệt
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm px-2.5 py-1" title="Từ chối" @onclick="() => ReviewRequest(item, false)">
+                                            <i class="bi bi-x-lg"></i> Từ chối
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+
+<!-- 3. MODAL TẠO ĐƠN XIN NGHỈ PHÉP (POPUP FORM) -->
+@if (showCreateModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.45); backdrop-filter: blur(2px); z-index: 1055;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                
+                <div class="modal-header bg-slate-50 border-bottom px-4 py-3">
+                    <div>
+                        <h5 class="modal-title fw-bold text-slate-900 fs-6">Tạo Đơn Xin Nghỉ Phép</h5>
+                        <p class="text-muted small mb-0" style="font-size: 12px;">Đơn sẽ được gửi trực tiếp tới Bộ phận Nhân sự để xét duyệt.</p>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
+                </div>
+
+                <div class="modal-body p-4 space-y-3">
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
+                            <i class="bi bi-exclamation-circle me-1"></i>@formError
+                        </div>
+                    }
+
+                    <!-- 1. Loại nghỉ phép -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-slate-700 mb-1">Loại nghỉ phép <span class="text-danger">*</span></label>
+                        <select class="form-select text-sm rounded-3" @bind="newLeaveType">
+                            <option value="@LeaveType.Paid">Nghỉ phép năm (Có hưởng lương - Khả dụng: @remainingAnnualDays.ToString("0.#") ngày)</option>
+                            <option value="@LeaveType.Unpaid">Nghỉ việc riêng không hưởng lương</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. Tuỳ chọn nghỉ nửa ngày -->
+                    <div class="p-2.5 rounded-3 bg-light border d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <span class="small fw-semibold text-slate-800 d-block">Nghỉ nửa ngày (0.5 công)</span>
+                            <span class="text-muted" style="font-size: 11px;">Áp dụng cho buổi sáng hoặc buổi chiều</span>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" @bind="isHalfDay" @bind:after="OnHalfDayChanged" style="cursor: pointer;">
+                        </div>
+                    </div>
+
+                    <!-- 3. Khoảng ngày -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-slate-700 mb-1">Từ ngày <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control text-sm rounded-3" @bind="newStartDate" @bind:after="CalculateDays" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold text-slate-700 mb-1">Đến ngày <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control text-sm rounded-3" @bind="newEndDate" @bind:after="CalculateDays" disabled="@isHalfDay" />
+                        </div>
+                    </div>
+
+                    <!-- 4. Số công ước tính -->
+                    <div class="p-2.5 rounded-3 bg-primary-subtle text-primary border border-primary-subtle d-flex justify-content-between align-items-center small mb-3">
+                        <span class="fw-medium">Thời lượng đăng ký nghỉ:</span>
+                        <span class="fw-bold fs-6">@calculatedDays.ToString("0.#") công</span>
+                    </div>
+
+                    <!-- 5. Lý do -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-slate-700 mb-1">Lý do xin nghỉ <span class="text-danger">*</span></label>
+                        <textarea class="form-control text-sm rounded-3" rows="3" placeholder="Nhập chi tiết lý do xin nghỉ..." @bind="newReason"></textarea>
+                    </div>
+
+                    <!-- 6. Người duyệt chỉ định -->
+                    <div class="p-2.5 rounded-3 bg-slate-50 border d-flex align-items-center gap-2.5">
+                        <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 11px;">
+                            TB
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="fw-bold text-slate-900 small text-truncate">Trần Thị Bình (HR Manager)</div>
+                            <div class="text-muted" style="font-size: 11px;">Người phê duyệt trực tiếp</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-slate-50 border-top px-4 py-2.5 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border fw-semibold rounded-3 px-3" @onclick="CloseCreateModal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary fw-semibold rounded-3 px-4 shadow-xs" @onclick="SubmitLeaveRequest">
+                        <i class="bi bi-send me-1"></i>Gửi đơn duyệt
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .hover-bg-slate-50:hover {
+        background-color: #f8fafc;
+    }
+</style>
+
+@code {
+    private List<LeaveRequest> allRequests = new();
+    private string currentFilter = "all";
+    private bool showCreateModal = false;
+
+    // Balances
+    private double totalAnnualDays = 12.0;
+    private double usedAnnualDays = 7.5;
+    private double remainingAnnualDays => Math.Max(0, totalAnnualDays - usedAnnualDays);
+    private double usedSickDays = 2.0;
+    private double usedUnpaidDays = 0.0;
+
+    // Form fields
+    private LeaveType newLeaveType = LeaveType.Paid;
+    private bool isHalfDay = false;
+    private DateTime newStartDate = DateTime.Today;
+    private DateTime newEndDate = DateTime.Today;
+    private double calculatedDays = 1.0;
+    private string newReason = "";
+    private string? formError;
+    private string? alertSuccess;
+
+    private IEnumerable<LeaveRequest> filteredRequests => currentFilter switch
+    {
+        "Pending" => allRequests.Where(r => r.Status == LeaveRequestStatus.Pending),
+        "Approved" => allRequests.Where(r => r.Status == LeaveRequestStatus.Approved),
+        "Rejected" => allRequests.Where(r => r.Status == LeaveRequestStatus.Rejected),
+        _ => allRequests
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRequestsAsync();
+        UserSession.OnChange += StateHasChanged;
+    }
+
+    private async Task LoadRequestsAsync()
+    {
+        int? filterEmpId = UserSession.IsEmployee ? UserSession.CurrentEmployeeId : null;
+        allRequests = (await LeaveRepo.GetAllLeaveRequestsAsync(filterEmpId)).ToList();
+        
+        // Cập nhật số ngày đã dùng từ CSDL
+        var approvedPaid = allRequests
+            .Where(r => r.LeaveType == LeaveType.Paid && r.Status == LeaveRequestStatus.Approved)
+            .Sum(r => r.NumberOfDays);
+        if (approvedPaid > 0)
+        {
+            usedAnnualDays = approvedPaid;
+        }
+    }
+
+    private void OpenCreateModal()
+    {
+        newStartDate = DateTime.Today;
+        newEndDate = DateTime.Today;
+        isHalfDay = false;
+        newReason = "";
+        formError = null;
+        CalculateDays();
+        showCreateModal = true;
+    }
+
+    private void CloseCreateModal()
+    {
+        showCreateModal = false;
+    }
+
+    private void OnHalfDayChanged()
+    {
+        if (isHalfDay)
+        {
+            newEndDate = newStartDate;
+            calculatedDays = 0.5;
+        }
+        else
+        {
+            CalculateDays();
+        }
+    }
+
+    private void CalculateDays()
+    {
+        if (isHalfDay)
+        {
+            newEndDate = newStartDate;
+            calculatedDays = 0.5;
+            return;
+        }
+
+        if (newEndDate < newStartDate)
+        {
+            calculatedDays = 0;
+            return;
+        }
+
+        int count = 0;
+        var cur = newStartDate.Date;
+        while (cur <= newEndDate.Date)
+        {
+            if (cur.DayOfWeek != DayOfWeek.Saturday && cur.DayOfWeek != DayOfWeek.Sunday)
+            {
+                count++;
+            }
+            cur = cur.AddDays(1);
+        }
+        calculatedDays = count;
+    }
+
+    private async Task SubmitLeaveRequest()
+    {
+        formError = null;
+        if (string.IsNullOrWhiteSpace(newReason))
+        {
+            formError = "Vui lòng nhập lý do xin nghỉ phép.";
+            return;
+        }
+
+        if (calculatedDays <= 0)
+        {
+            formError = "Khoảng thời gian nghỉ không hợp lệ.";
+            return;
+        }
+
+        if (newLeaveType == LeaveType.Paid && calculatedDays > remainingAnnualDays)
+        {
+            formError = $"Số ngày phép năm còn lại ({remainingAnnualDays} ngày) không đủ cho {calculatedDays} ngày nghỉ.";
+            return;
+        }
+
+        int empId = UserSession.CurrentEmployeeId ?? 1;
+
+        var request = new LeaveRequest
+        {
+            EmployeeId = empId,
+            StartDate = newStartDate.Date,
+            EndDate = isHalfDay ? newStartDate.Date : newEndDate.Date,
+            NumberOfDays = calculatedDays,
+            LeaveType = newLeaveType,
+            Reason = newReason.Trim(),
+            Status = LeaveRequestStatus.Pending,
+            ApprovedBy = "Trần Thị Bình (HR Manager)",
+            CreatedAt = DateTime.Now
+        };
+
+        await LeaveRepo.AddLeaveRequestAsync(request);
+        alertSuccess = $"Gửi đơn xin nghỉ phép thành công! Đơn đang chờ Quản lý / HR phê duyệt.";
+        
+        CloseCreateModal();
+        await LoadRequestsAsync();
+    }
+
+    private async Task CancelRequest(int id)
+    {
+        var req = allRequests.FirstOrDefault(r => r.Id == id);
+        if (req != null && req.Status == LeaveRequestStatus.Pending)
+        {
+            req.Status = LeaveRequestStatus.Rejected;
+            req.Note = "Nhân viên đã tự hủy đơn.";
+            await LeaveRepo.UpdateLeaveRequestAsync(req);
+            alertSuccess = "Đã hủy đơn xin nghỉ phép thành công.";
+            await LoadRequestsAsync();
+        }
+    }
+
+    private async Task ReviewRequest(LeaveRequest req, bool isApprove)
+    {
+        req.Status = isApprove ? LeaveRequestStatus.Approved : LeaveRequestStatus.Rejected;
+        req.ApprovedBy = UserSession.CurrentEmployeeName;
+        req.ApprovedAt = DateTime.Now;
+        req.Note = isApprove ? "Đồng ý phê duyệt ngày nghỉ." : "Yêu cầu sắp xếp lại công việc.";
+        await LeaveRepo.UpdateLeaveRequestAsync(req);
+        alertSuccess = $"Đã {(isApprove ? "phê duyệt" : "từ chối")} đơn nghỉ phép của nhân viên.";
+        await LoadRequestsAsync();
+    }
+
+    public void Dispose()
+    {
+        UserSession.OnChange -= StateHasChanged;
+    }
+}
