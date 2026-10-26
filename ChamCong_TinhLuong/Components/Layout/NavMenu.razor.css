@@ -1,170 +1,24 @@
-.sidebar-brand-wrapper {
-    background: transparent;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    height: 64px;
-}
-
-.brand-badge-box {
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-    background: #2563eb;
-    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
-}
-
-.brand-title {
-    font-size: 0.925rem;
-    font-weight: 700;
-    color: #ffffff;
-    line-height: 1.15;
-    letter-spacing: -0.015em;
-}
-
-.brand-subtitle {
-    font-size: 11px;
-    color: #94a3b8;
-    font-weight: 500;
-    line-height: 1.2;
-}
-
-.badge-version {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 7px;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.08);
-    color: #cbd5e1;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.custom-scrollbar {
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
-}
-
-/* Sidebar Navigation Link (Clean 6-Item SaaS Style) */
-.custom-sidebar-link {
-    color: #94a3b8 !important;
-    background: transparent;
-    border-radius: 10px;
-    padding: 0.65rem 0.85rem;
-    font-size: 0.865rem;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    text-decoration: none;
-    transition: all 0.18s ease-in-out;
-}
-
-.nav-icon {
-    font-size: 1.05rem;
-    color: #94a3b8;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    transition: color 0.18s ease;
-}
-
-.custom-sidebar-link:hover {
-    color: #ffffff !important;
-    background-color: rgba(255, 255, 255, 0.08);
-}
-
-.custom-sidebar-link:hover .nav-icon {
-    color: #ffffff;
-}
-
-/* Active State: Cobalt Blue Card (matches Mockup) */
-.nav-item ::deep a.active {
-    color: #ffffff !important;
-    background: #2563eb !important;
-    font-weight: 600;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
-}
-
-.nav-item ::deep a.active .nav-icon {
-    color: #ffffff !important;
-}
-
-/* Bottom User Settings Card */
-.sidebar-user-footer {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: transparent;
-}
-
-.sidebar-user-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: background 0.15s ease;
-}
-
-.sidebar-user-card:hover {
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.user-avatar-hr {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #2563eb;
-    font-size: 11px;
-    flex-shrink: 0;
-}
-
-.user-card-title {
-    font-size: 12px;
-    color: #ffffff;
-    line-height: 1.2;
-}
-
-/* Responsive */
-.navbar-toggler {
-    display: none;
-}
-
-.mobile-toggle-btn {
-    display: none;
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    color: #ffffff;
-    cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-@media (max-width: 640.98px) {
-    .mobile-toggle-btn {
-        display: block;
-    }
-
-    .nav-scrollable {
-        display: none;
-    }
-
-    .navbar-toggler:checked ~ .nav-scrollable {
-        display: flex;
-        flex-direction: column;
-    }
-}
-
-@media (min-width: 641px) {
-    .nav-scrollable {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 64px);
-    }
-}
+.sidebar-brand-wrapper { background: #fff; border-bottom: 1px solid #eef2f7; height: 76px; padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+.brand-badge-box { width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(145deg,#3b82f6,#1d4ed8); box-shadow: 0 6px 14px rgba(37,99,235,.22); }
+.brand-title { font-size: .96rem; font-weight: 700; color: #14213d; line-height: 1.15; letter-spacing: -.015em; }
+.brand-subtitle { font-size: 11px; color: #8a98ad; font-weight: 500; line-height: 1.2; }
+.badge-version { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 9999px; background: #f1f6ff; color: #4d6d9f; border: 1px solid #e3ecfb; }
+.custom-scrollbar { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #dbe5f2 transparent; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dbe5f2; border-radius: 4px; }
+.custom-sidebar-link { color: #68788f !important; background: transparent; border-radius: 9px; padding: .72rem .85rem; font-size: .875rem; font-weight: 500; display: flex; align-items: center; gap: .75rem; text-decoration: none; transition: all .18s ease-in-out; }
+.nav-icon { font-size: 1.05rem; color: #8a9ab0; display: inline-flex; align-items: center; justify-content: center; width: 20px; transition: color .18s ease; }
+.custom-sidebar-link:hover { color: #1d4ed8 !important; background: #f3f7ff; }
+.custom-sidebar-link:hover .nav-icon { color: #2563eb; }
+.nav-item ::deep a.active { color: #1d4ed8 !important; background: #edf4ff !important; font-weight: 600; box-shadow: inset 3px 0 0 #3478f6; }
+.nav-item ::deep a.active .nav-icon { color: #2563eb !important; }
+.sidebar-user-footer { border-top: 1px solid #eef2f7; background: transparent; }
+.sidebar-user-card { background: #f7f9fc; border: 1px solid #edf1f6; transition: background .15s ease; }
+.sidebar-user-card:hover { background: #f0f5fc; }
+.user-avatar-hr { width: 32px; height: 32px; border-radius: 50%; background: #2563eb; font-size: 11px; flex-shrink: 0; }
+.user-card-title { font-size: 12px; color: #23334d !important; line-height: 1.2; }
+.sidebar-user-card .text-white-50, .sidebar-user-card > i { color: #8391a5 !important; }
+.navbar-toggler { display: none; }
+.mobile-toggle-btn { display: none; position: absolute; top: 1rem; right: 1rem; color: #64748b; cursor: pointer; padding: .25rem .5rem; border-radius: 6px; background: #f1f6ff; }
+@media (max-width: 640.98px) { .mobile-toggle-btn { display: block; } .nav-scrollable { display: none; } .navbar-toggler:checked ~ .nav-scrollable { display: flex; flex-direction: column; } }
+@media (min-width: 641px) { .nav-scrollable { display: flex; flex-direction: column; height: calc(100vh - 76px); } }

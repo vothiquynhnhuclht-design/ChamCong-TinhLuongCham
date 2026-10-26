@@ -30,7 +30,7 @@ public class UserSessionService
     public event Action? OnChange;
 
     public bool IsAuthenticated { get; private set; } = false;
-    public AppUserRole CurrentRole { get; private set; } = AppUserRole.AdminHr;
+    public AppUserRole CurrentRole { get; private set; } = AppUserRole.Employee;
     public int? CurrentEmployeeId { get; private set; } = null;
     public string CurrentEmployeeCode { get; private set; } = string.Empty;
     public string CurrentEmployeeName { get; private set; } = string.Empty;
@@ -38,6 +38,64 @@ public class UserSessionService
 
     public bool IsAdminHr => IsAuthenticated && CurrentRole == AppUserRole.AdminHr;
     public bool IsEmployee => IsAuthenticated && CurrentRole == AppUserRole.Employee;
+
+    /// <summary>
+    /// Tên chức danh phân quyền hiển thị trên giao diện (Quản trị viên, Nhân sự - Kế toán, hoặc Nhân viên)
+    /// </summary>
+    public string CurrentRoleTitle
+    {
+        get
+        {
+            if (!IsAuthenticated) return string.Empty;
+            if (CurrentRole == AppUserRole.AdminHr)
+            {
+                if (CurrentEmployeeCode.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
+                    CurrentUserEmail.StartsWith("admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Quản trị viên";
+                }
+                return "Nhân sự - Kế toán";
+            }
+            return "Nhân viên";
+        }
+    }
+
+    /// <summary>
+    /// Kiểm tra người dùng có thuộc bộ phận Nhân sự - Kế toán hoặc Quản trị hệ thống hay không.
+    /// Theo quy tắc nghiệp vụ: Chỉ Nhân sự - Kế toán mới được cấp quyền AdminHr (Toàn quyền quản trị/nghiệp vụ),
+    /// toàn bộ các phòng ban/nhân viên khác đều là Nhân viên (Employee).
+    /// </summary>
+    public static bool IsHrOrAccountingUser(AppUser user)
+    {
+        // 1. Tài khoản quản trị hệ thống không gắn nhân viên cụ thể (admin, ketoan)
+        if (user.Employee == null)
+        {
+            return user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase)
+                || user.Username.Equals("ketoan", StringComparison.OrdinalIgnoreCase)
+                || user.Role == UserRole.Admin
+                || user.Role == UserRole.HR;
+        }
+
+        var emp = user.Employee;
+        var deptCode = emp.Department?.DepartmentCode ?? string.Empty;
+        var deptName = emp.Department?.DepartmentName ?? string.Empty;
+        var position = emp.Position ?? string.Empty;
+
+        // 2. Thuộc phòng Nhân sự - Kế toán (DepartmentId == 2 hoặc mã phòng HR hoặc tên phòng chứa Nhân sự / Kế toán)
+        bool isDeptHrOrAcc = emp.DepartmentId == 2
+            || deptCode.Equals("HR", StringComparison.OrdinalIgnoreCase)
+            || deptName.Contains("Nhân sự", StringComparison.OrdinalIgnoreCase)
+            || deptName.Contains("Kế toán", StringComparison.OrdinalIgnoreCase)
+            || deptName.Contains("HR", StringComparison.OrdinalIgnoreCase);
+
+        // 3. Hoặc có chức danh / vị trí công tác là Nhân sự / Kế toán
+        bool isPositionHrOrAcc = position.Contains("Nhân sự", StringComparison.OrdinalIgnoreCase)
+            || position.Contains("Kế toán", StringComparison.OrdinalIgnoreCase)
+            || position.Contains("HR", StringComparison.OrdinalIgnoreCase)
+            || position.Contains("Accountant", StringComparison.OrdinalIgnoreCase);
+
+        return isDeptHrOrAcc || isPositionHrOrAcc;
+    }
 
     /// <summary>
     /// Đăng nhập hệ thống đồng bộ trực tiếp từ SQL Server (Bảng AppUsers và Employees).
@@ -68,13 +126,20 @@ public class UserSessionService
 
                 if (emp != null)
                 {
+                    bool isHr = emp.DepartmentId == 2
+                        || (emp.Department?.DepartmentCode.Equals("HR", StringComparison.OrdinalIgnoreCase) == true)
+                        || (emp.Department?.DepartmentName.Contains("Nhân sự", StringComparison.OrdinalIgnoreCase) == true)
+                        || (emp.Department?.DepartmentName.Contains("Kế toán", StringComparison.OrdinalIgnoreCase) == true)
+                        || (emp.Position?.Contains("Nhân sự", StringComparison.OrdinalIgnoreCase) == true)
+                        || (emp.Position?.Contains("Kế toán", StringComparison.OrdinalIgnoreCase) == true);
+
                     // Tạo tài khoản tự động trong SQL Server cho nhân viên
                     var hash = HashPassword(password);
                     user = new AppUser
                     {
                         Username = emp.EmployeeCode.ToLower(),
                         PasswordHash = hash,
-                        Role = (emp.DepartmentId == 2) ? UserRole.HR : UserRole.Employee,
+                        Role = isHr ? UserRole.HR : UserRole.Employee,
                         EmployeeId = emp.Id,
                         IsActive = true,
                         CreatedAt = DateTime.Now
@@ -102,14 +167,28 @@ public class UserSessionService
 
             // 4. Ghi nhận thời điểm đăng nhập thành công vào SQL Server
             user.LastLoginAt = DateTime.Now;
+
+            // 5. Cập nhật phân quyền chuẩn nghiệp vụ:
+            // Chỉ nhân sự - kế toán (hoặc admin hệ thống) mới được phân quyền quản trị (AdminHr), còn lại đều là Nhân viên (Employee).
+            bool isHrOrAdmin = IsHrOrAccountingUser(user);
+
+            var expectedRole = isHrOrAdmin
+                ? (user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase) ? UserRole.Admin : UserRole.HR)
+                : UserRole.Employee;
+
+            if (user.Role != expectedRole)
+            {
+                user.Role = expectedRole;
+            }
             await _userRepo.UpdateUserAsync(user);
 
-            // 5. Cập nhật trạng thái phiên làm việc theo dữ liệu SQL Server
             IsAuthenticated = true;
-            CurrentRole = (user.Role == UserRole.Employee) ? AppUserRole.Employee : AppUserRole.AdminHr;
+            CurrentRole = isHrOrAdmin ? AppUserRole.AdminHr : AppUserRole.Employee;
             CurrentEmployeeId = user.EmployeeId;
             CurrentEmployeeCode = user.Employee?.EmployeeCode ?? user.Username.ToUpper();
-            CurrentEmployeeName = user.Employee?.FullName ?? (user.Role == UserRole.Admin ? "Quản trị viên Hệ thống" : (user.Role == UserRole.HR ? "Kế toán / Nhân sự" : user.Username));
+            CurrentEmployeeName = user.Employee?.FullName ?? (isHrOrAdmin
+                ? (user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase) ? "Quản trị viên Hệ thống" : "Nhân sự - Kế toán")
+                : user.Username);
             CurrentUserEmail = user.Employee?.Email ?? $"{user.Username}@company.com";
 
             OnChange?.Invoke();
@@ -127,7 +206,7 @@ public class UserSessionService
     public void Logout()
     {
         IsAuthenticated = false;
-        CurrentRole = AppUserRole.AdminHr;
+        CurrentRole = AppUserRole.Employee;
         CurrentEmployeeId = null;
         CurrentEmployeeCode = string.Empty;
         CurrentEmployeeName = string.Empty;

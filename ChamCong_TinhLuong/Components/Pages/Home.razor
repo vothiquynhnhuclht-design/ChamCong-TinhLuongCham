@@ -18,7 +18,7 @@
         <div class="role-switcher-bar mb-3.5 d-flex align-items-center justify-content-between p-2.5 px-3 bg-white rounded-3 shadow-xs">
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-2">
-                    <i class="bi bi-shield-check me-1"></i>Tài khoản Quản trị
+                    <i class="bi bi-shield-check me-1"></i>Tài khoản @UserSession.CurrentRoleTitle
                 </span>
                 <span class="text-slate-500 small">Đang xem trước giao diện:</span>
             </div>
@@ -382,7 +382,7 @@
                             @(string.IsNullOrEmpty(currentEmployee?.Position) ? "Nhân viên" : currentEmployee.Position)
                         </div>
                         <div class="profile-user-code">
-                            Mã NV: @(string.IsNullOrEmpty(currentEmployee?.EmployeeCode) ? "NV0012" : currentEmployee.EmployeeCode)
+                            Mã NV: @(string.IsNullOrEmpty(currentEmployee?.EmployeeCode) ? "0" : currentEmployee.EmployeeCode)
                         </div>
                     </div>
 
@@ -395,7 +395,7 @@
                                 <span>Email</span>
                             </div>
                             <div class="info-value text-truncate" title="@currentEmployee?.Email">
-                                @(string.IsNullOrEmpty(currentEmployee?.Email) ? "mai.nguyen@techcorp.com" : currentEmployee.Email)
+                                @(string.IsNullOrEmpty(currentEmployee?.Email) ? "0" : currentEmployee.Email)
                             </div>
                         </div>
 
@@ -405,7 +405,7 @@
                                 <span>Số điện thoại</span>
                             </div>
                             <div class="info-value">
-                                @(string.IsNullOrEmpty(currentEmployee?.PhoneNumber) ? "0912 345 678" : currentEmployee.PhoneNumber)
+                                @(string.IsNullOrEmpty(currentEmployee?.PhoneNumber) ? "0" : currentEmployee.PhoneNumber)
                             </div>
                         </div>
 
@@ -415,7 +415,7 @@
                                 <span>Ngày vào làm</span>
                             </div>
                             <div class="info-value">
-                                @(currentEmployee != null ? currentEmployee.JoinDate.ToString("dd/MM/yyyy") : "10/10/2026")
+                                @(currentEmployee != null ? currentEmployee.JoinDate.ToString("dd/MM/yyyy") : "0")
                             </div>
                         </div>
 
@@ -425,7 +425,7 @@
                                 <span>Phòng ban</span>
                             </div>
                             <div class="info-value text-truncate" style="max-width: 175px;" title="@currentEmployee?.Department?.DepartmentName">
-                                @(currentEmployee?.Department != null ? currentEmployee.Department.DepartmentName : "Phòng Kinh doanh")
+                                @(currentEmployee?.Department != null ? currentEmployee.Department.DepartmentName : "0")
                             </div>
                         </div>
 
@@ -1067,6 +1067,43 @@
         background-color: #f1f5f9;
         margin: 11px 0;
     }
+
+    /* Updated blue and white dashboard styling */
+    .overview-container { color: #172b4d; }
+    .welcome-banner {
+        background: linear-gradient(112deg, #eff6ff 0%, #f7fbff 58%, #e9f3ff 100%);
+        border: 1px solid #dceaff;
+        border-radius: 16px;
+        padding: 28px 32px;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, .055);
+    }
+    .welcome-heading { color: #14213d; font-size: 1.7rem; font-weight: 750; }
+    .welcome-subheading { color: #657791; }
+    .quick-card, .content-box {
+        border: 1px solid #e7edf5;
+        border-radius: 14px;
+        box-shadow: 0 3px 12px rgba(20, 55, 100, .035);
+    }
+    .quick-card { min-height: 88px; padding: 18px 20px; }
+    .quick-card:hover, .content-box:hover {
+        border-color: #d4e3f8;
+        box-shadow: 0 8px 22px rgba(37, 99, 235, .075);
+    }
+    .quick-icon-circle { border-radius: 13px; }
+    .icon-clock-bg, .icon-file-bg, .icon-payroll-bg { background: #edf4ff; color: #2563eb; }
+    .quick-card-title, .section-title { color: #172b4d; }
+    .quick-card-sub { color: #8291a7; }
+    .schedule-header { padding: 18px 22px; border-bottom-color: #edf1f7; }
+    .schedule-days-pane, .schedule-timeline-pane { background-color: #fff; }
+    .schedule-day-row.is-active { background-color: #edf4ff !important; }
+    .date-display-badge { background: #f7f9fc; border-color: #e7edf5; }
+    .btn-nav-arrow:hover { background: #edf4ff; color: #1d4ed8; border-color: #d5e5ff; }
+    .role-switcher-bar { border: 1px solid #e7edf5; box-shadow: 0 3px 12px rgba(20,55,100,.035) !important; }
+    @@media (max-width: 767.98px) {
+        .welcome-banner { padding: 22px 20px; }
+        .welcome-heading { font-size: 1.35rem; }
+        .schedule-header { align-items: flex-start !important; gap: 12px; flex-wrap: wrap; }
+    }
 </style>
 
 @code {
@@ -1302,3 +1339,4 @@
         UserSession.OnChange -= OnSessionChanged;
     }
 }
+

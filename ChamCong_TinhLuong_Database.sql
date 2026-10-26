@@ -415,10 +415,10 @@ IF NOT EXISTS (SELECT 1 FROM [TaiKhoanNguoiDung] WHERE [Username] = 'NV003')
     INSERT INTO [TaiKhoanNguoiDung] ([Username], [PasswordHash], [Role], [EmployeeId], [IsActive], [CreatedAt])
     VALUES ('NV003', @PwdHash, 2, @Emp3, 1, GETDATE());
 
--- Tài khoản Quản trị NV004 (Võ Thị Quỳnh Như)
+-- Tài khoản Nhân viên NV004 (Võ Thị Quỳnh Như - Phòng CNTT)
 IF NOT EXISTS (SELECT 1 FROM [TaiKhoanNguoiDung] WHERE [Username] = 'NV004')
     INSERT INTO [TaiKhoanNguoiDung] ([Username], [PasswordHash], [Role], [EmployeeId], [IsActive], [CreatedAt])
-    VALUES ('NV004', @PwdHash, 0, @Emp4, 1, GETDATE());
+    VALUES ('NV004', @PwdHash, 2, @Emp4, 1, GETDATE());
 
 -- Tài khoản NV005 (Lê Linh)
 IF NOT EXISTS (SELECT 1 FROM [TaiKhoanNguoiDung] WHERE [Username] = 'NV005')

@@ -48,7 +48,7 @@ else
                                 @(string.IsNullOrEmpty(UserSession.CurrentEmployeeName) ? "Nguyễn Thị Mai" : UserSession.CurrentEmployeeName)
                             </div>
                             <span class="text-slate-400 user-display-role small">
-                                @(UserSession.IsAdminHr ? "Quản trị viên" : "Nhân viên")
+                                @UserSession.CurrentRoleTitle
                             </span>
                         </div>
                     </div>
