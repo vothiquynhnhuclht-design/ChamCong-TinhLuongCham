@@ -8,11 +8,16 @@ namespace ChamCong_TinhLuong.UseCases.Payroll;
 public class LockPayrollPeriodUseCase
 {
     private readonly IPayslipRepository _payslipRepo;
+    private readonly INotificationLogRepository _notificationRepo;
     private readonly IUnitOfWork _unitOfWork;
 
-    public LockPayrollPeriodUseCase(IPayslipRepository payslipRepo, IUnitOfWork unitOfWork)
+    public LockPayrollPeriodUseCase(
+        IPayslipRepository payslipRepo,
+        INotificationLogRepository notificationRepo,
+        IUnitOfWork unitOfWork)
     {
         _payslipRepo = payslipRepo;
+        _notificationRepo = notificationRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -24,16 +29,44 @@ public class LockPayrollPeriodUseCase
             throw new InvalidOperationException($"Không có bảng lương nào trong kỳ tháng {month}/{year} để khóa sổ!");
         }
 
-        foreach (var slip in payslips)
+        using (await _unitOfWork.BeginTransactionAsync())
         {
-            slip.Status = PayslipStatus.Locked;
-            slip.LockedAt = DateTime.Now;
-            slip.LockedBy = lockedBy;
-            await _payslipRepo.UpdatePayslipAsync(slip);
-        }
+            try
+            {
+                var now = DateTime.Now;
+                foreach (var slip in payslips)
+                {
+                    slip.Status = PayslipStatus.Locked;
+                    slip.LockedAt = now;
+                    slip.LockedBy = lockedBy;
+                    await _payslipRepo.UpdatePayslipAsync(slip);
 
-        await _unitOfWork.SaveChangesAsync();
-        return true;
+                    // Ghi nhận Audit Trail phát hành phiếu lương vào bảng NhatKyThongBao
+                    if (slip.Employee != null && !string.IsNullOrWhiteSpace(slip.Employee.Email))
+                    {
+                        await _notificationRepo.AddLogAsync(new NotificationLog
+                        {
+                            EmployeeId = slip.EmployeeId,
+                            PayslipId = slip.Id,
+                            SentDate = now,
+                            Type = NotificationType.EmailPayslip,
+                            Status = NotificationStatus.Success,
+                            RecipientEmail = slip.Employee.Email,
+                            Subject = $"[Phát hành phiếu lương] Kỳ lương tháng {month:D2}/{year} - {slip.Employee.FullName}"
+                        });
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await _unitOfWork.RollbackAsync();
+                throw;
+            }
+        }
     }
 }
 

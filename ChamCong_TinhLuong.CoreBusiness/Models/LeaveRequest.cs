@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ChamCong_TinhLuong.CoreBusiness.Enums;
 
 namespace ChamCong_TinhLuong.CoreBusiness.Models;
@@ -15,11 +16,19 @@ public class LeaveRequest
     public int EmployeeId { get; set; }
     public Employee? Employee { get; set; }
 
+    [Required(ErrorMessage = "Vui lòng chọn ngày bắt đầu nghỉ.")]
     public DateTime StartDate { get; set; }
+
+    [Required(ErrorMessage = "Vui lòng chọn ngày kết thúc nghỉ.")]
     public DateTime EndDate { get; set; }
+
+    [Range(0.5, 365, ErrorMessage = "Số ngày nghỉ phải từ 0.5 ngày trở lên.")]
     public double NumberOfDays { get; set; } = 1.0;
     
+    [Required(ErrorMessage = "Vui lòng nhập lý do xin nghỉ phép.")]
+    [StringLength(500, MinimumLength = 5, ErrorMessage = "Lý do xin nghỉ phải từ 5 đến 500 ký tự.")]
     public string Reason { get; set; } = string.Empty;
+
     public LeaveType LeaveType { get; set; } = LeaveType.Paid;
     public LeaveRequestStatus Status { get; set; } = LeaveRequestStatus.Pending;
 

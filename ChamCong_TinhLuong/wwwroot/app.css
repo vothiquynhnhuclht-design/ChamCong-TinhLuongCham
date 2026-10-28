@@ -187,3 +187,26 @@ a:hover {
     width: 100%;
     z-index: 1000;
 }
+
+/* ========================================================================= */
+/* RESPONSIVE MOBILE 390PX (TIÊU CHÍ K3.3 & K3.4)                            */
+/* ========================================================================= */
+@media (max-width: 480px) {
+    .content {
+        padding-top: 0.75rem;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+
+    h1, .fs-2 {
+        font-size: 1.35rem !important;
+    }
+
+    h3 {
+        font-size: 1.15rem !important;
+    }
+}

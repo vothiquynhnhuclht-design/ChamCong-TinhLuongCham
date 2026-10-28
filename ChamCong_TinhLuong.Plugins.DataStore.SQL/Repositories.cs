@@ -1,4 +1,5 @@
 using ChamCong_TinhLuong.CoreBusiness.Enums;
+using ChamCong_TinhLuong.CoreBusiness.Exceptions;
 using ChamCong_TinhLuong.CoreBusiness.Models;
 using ChamCong_TinhLuong.UseCases.PluginInterfaces;
 using Microsoft.EntityFrameworkCore;
@@ -225,20 +226,82 @@ public class SqlAttendanceRepository : IAttendanceRepository
 
     public async Task AddAttendanceAsync(TimeAttendance attendance)
     {
-        await _db.TimeAttendances.AddAsync(attendance);
+        await EnsurePeriodNotLockedAsync(attendance.WorkDate.Month, attendance.WorkDate.Year);
+
+        // Chống trùng lặp (Upsert): Mỗi nhân viên chỉ có tối đa 1 bản ghi công trong cùng 1 ngày
+        var existing = await _db.TimeAttendances
+            .FirstOrDefaultAsync(a => a.EmployeeId == attendance.EmployeeId && a.WorkDate.Date == attendance.WorkDate.Date);
+
+        if (existing != null)
+        {
+            existing.CheckIn = attendance.CheckIn ?? existing.CheckIn;
+            existing.CheckOut = attendance.CheckOut ?? existing.CheckOut;
+            existing.LateMinutes = attendance.LateMinutes;
+            existing.EarlyLeaveMinutes = attendance.EarlyLeaveMinutes;
+            existing.ActualWorkDays = attendance.ActualWorkDays;
+            existing.OvertimeHours = attendance.OvertimeHours;
+            existing.Status = attendance.Status;
+            existing.Note = attendance.Note ?? existing.Note;
+            existing.PhotoPath = attendance.PhotoPath ?? existing.PhotoPath;
+            existing.CheckOutPhotoPath = attendance.CheckOutPhotoPath ?? existing.CheckOutPhotoPath;
+            _db.TimeAttendances.Update(existing);
+        }
+        else
+        {
+            attendance.WorkDate = attendance.WorkDate.Date;
+            await _db.TimeAttendances.AddAsync(attendance);
+        }
+
         await _db.SaveChangesAsync();
     }
 
     public async Task AddRangeAttendanceAsync(IEnumerable<TimeAttendance> attendances)
     {
-        await _db.TimeAttendances.AddRangeAsync(attendances);
+        var list = attendances.ToList();
+        if (!list.Any()) return;
+
+        var first = list[0];
+        await EnsurePeriodNotLockedAsync(first.WorkDate.Month, first.WorkDate.Year);
+
+        foreach (var item in list)
+        {
+            var existing = await _db.TimeAttendances
+                .FirstOrDefaultAsync(a => a.EmployeeId == item.EmployeeId && a.WorkDate.Date == item.WorkDate.Date);
+            if (existing != null)
+            {
+                existing.CheckIn = item.CheckIn;
+                existing.CheckOut = item.CheckOut;
+                existing.LateMinutes = item.LateMinutes;
+                existing.EarlyLeaveMinutes = item.EarlyLeaveMinutes;
+                existing.ActualWorkDays = item.ActualWorkDays;
+                existing.OvertimeHours = item.OvertimeHours;
+                existing.Status = item.Status;
+                existing.Note = item.Note;
+            }
+            else
+            {
+                item.WorkDate = item.WorkDate.Date;
+                await _db.TimeAttendances.AddAsync(item);
+            }
+        }
+
         await _db.SaveChangesAsync();
     }
 
     public async Task UpdateAttendanceAsync(TimeAttendance attendance)
     {
+        await EnsurePeriodNotLockedAsync(attendance.WorkDate.Month, attendance.WorkDate.Year);
         _db.TimeAttendances.Update(attendance);
         await _db.SaveChangesAsync();
+    }
+
+    private async Task EnsurePeriodNotLockedAsync(int month, int year)
+    {
+        bool locked = await _db.Payslips.AnyAsync(p => p.Month == month && p.Year == year && p.Status == PayslipStatus.Locked);
+        if (locked)
+        {
+            throw new PayslipLockedException(month, year);
+        }
     }
 }
 

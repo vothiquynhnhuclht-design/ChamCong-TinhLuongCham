@@ -184,31 +184,25 @@ public class CalculatePayrollUseCase
                         }
                     }
 
-                    // 8. Tính thuế TNCN (Tạm tính đơn giản theo luật: Thu nhập chịu thuế = Gross - BH - Giảm trừ bản thân 11tr - Người phụ thuộc 4.4tr)
+                    // 8. Tính thuế TNCN theo Biểu thuế lũy tiến từng phần 7 bậc (Luật Thuế TNCN Việt Nam)
+                    // Thu nhập tính thuế = Gross - Bảo hiểm bắt buộc - Giảm trừ bản thân (11tr) - Giảm trừ người phụ thuộc (4.4tr/người)
                     var selfRate = deductionRates.FirstOrDefault(r => r.Code == "TNCN_BAN_THAN");
                     decimal selfRelief = selfRate?.FlatAmount ?? 11000000m;
                     decimal dependentRelief = (deductionRates.FirstOrDefault(r => r.Code == "TNCN_PHU_THUOC")?.FlatAmount ?? 4400000m) * emp.DependentCount;
                     
                     decimal taxableIncome = grossSalary - totalDeductions - selfRelief - dependentRelief;
-                    decimal incomeTax = 0m;
-                    if (taxableIncome > 0)
+                    decimal incomeTax = CalculateProgressiveIncomeTax(taxableIncome);
+                    if (incomeTax > 0)
                     {
-                        if (taxableIncome <= 5000000m)
-                            incomeTax = Math.Round(taxableIncome * 0.05m, 0);
-                        else if (taxableIncome <= 10000000m)
-                            incomeTax = Math.Round(250000m + (taxableIncome - 5000000m) * 0.10m, 0);
-                        else
-                            incomeTax = Math.Round(750000m + (taxableIncome - 10000000m) * 0.15m, 0);
-
                         totalDeductions += incomeTax;
                         payslip.Lines.Add(new PayslipLine
                         {
                             DeductionRateId = selfRate?.Id,
                             LineType = PayslipLineType.Deduction,
                             ItemCode = "TAX_TNCN",
-                            ItemName = "Thuế thu nhập cá nhân (TNCN)",
+                            ItemName = "Thuế thu nhập cá nhân (TNCN lũy tiến 7 bậc)",
                             Amount = incomeTax,
-                            CalculationNote = $"Thu nhập tính thuế: {taxableIncome:N0} đ (sau giảm trừ {selfRelief + dependentRelief:N0} đ)"
+                            CalculationNote = $"TN tính thuế: {taxableIncome:N0} đ (Giảm trừ: {selfRelief + dependentRelief:N0} đ, {emp.DependentCount} NPT)"
                         });
                     }
 
@@ -237,5 +231,33 @@ public class CalculatePayrollUseCase
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Biểu thuế TNCN lũy tiến từng phần 7 bậc đối với thu nhập từ tiền lương, tiền công (Thông tư 111/2013/TT-BTC):
+    /// Bậc 1: Đến 5 triệu             -> 5%
+    /// Bậc 2: Trên 5 đến 10 triệu     -> 10% - 0.25 triệu
+    /// Bậc 3: Trên 10 đến 18 triệu    -> 15% - 0.75 triệu
+    /// Bậc 4: Trên 18 đến 32 triệu    -> 20% - 1.65 triệu
+    /// Bậc 5: Trên 32 đến 52 triệu    -> 25% - 3.25 triệu
+    /// Bậc 6: Trên 52 đến 80 triệu    -> 30% - 5.85 triệu
+    /// Bậc 7: Trên 80 triệu           -> 35% - 9.85 triệu
+    /// </summary>
+    public static decimal CalculateProgressiveIncomeTax(decimal taxableIncome)
+    {
+        if (taxableIncome <= 0m) return 0m;
+
+        decimal tax = taxableIncome switch
+        {
+            <= 5_000_000m  => taxableIncome * 0.05m,
+            <= 10_000_000m => taxableIncome * 0.10m - 250_000m,
+            <= 18_000_000m => taxableIncome * 0.15m - 750_000m,
+            <= 32_000_000m => taxableIncome * 0.20m - 1_650_000m,
+            <= 52_000_000m => taxableIncome * 0.25m - 3_250_000m,
+            <= 80_000_000m => taxableIncome * 0.30m - 5_850_000m,
+            _              => taxableIncome * 0.35m - 9_850_000m
+        };
+
+        return Math.Round(tax, 0);
     }
 }

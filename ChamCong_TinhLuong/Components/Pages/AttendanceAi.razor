@@ -1,0 +1,137 @@
+@page "/attendance-ai"
+@using ChamCong_TinhLuong.UseCases.AI
+@inject GetAttendanceAiAdviceUseCase GetAdvice
+@inject SaveConfirmedAttendanceNoteUseCase SaveNote
+@inject IAttendanceRepository AttendanceRepo
+@inject UserSessionService UserSession
+@implements IDisposable
+
+@* Component chỉ gọi Use Case — không biết IChatClient, Ollama hay OpenAI là gì. *@
+
+<PageTitle>Gợi ý chuyên cần từ AI</PageTitle>
+
+<div class="container-fluid py-3" style="max-width: 860px;">
+    <h4 class="fw-bold mb-1">Gợi ý chuyên cần từ AI</h4>
+    <p class="text-muted small mb-3">AI chỉ đưa ra gợi ý. Không có dữ liệu nào được lưu cho đến khi bạn bấm xác nhận.</p>
+
+    <div class="d-flex gap-2 align-items-center mb-3">
+        <input type="month" class="form-control" style="max-width: 200px;" @bind="selectedMonth" />
+        <button class="btn btn-primary" @onclick="RequestAdviceAsync" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span><span>Đang phân tích...</span>
+            }
+            else
+            {
+                <i class="bi bi-stars me-1"></i><span>Nhận gợi ý</span>
+            }
+        </button>
+    </div>
+
+    @* Lỗi AI: chỉ hiển thị thông báo thân thiện, phần còn lại của trang vẫn dùng bình thường *@
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-warning d-flex align-items-center gap-2 py-2">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span class="small">@errorMessage</span>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" @onclick="RequestAdviceAsync" disabled="@isLoading">Thử lại</button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(draftNote))
+    {
+        <div class="card border rounded-3 p-3">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-warning-subtle text-warning-emphasis border">Bản nháp do AI tạo — chưa lưu</span>
+            </div>
+
+            <label class="form-label small fw-semibold">Bạn có thể chỉnh sửa trước khi lưu:</label>
+            <textarea class="form-control mb-3" rows="7" @bind="draftNote"></textarea>
+
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-6">
+                    <label class="form-label small fw-semibold">Lưu làm ghi chú cho ngày công:</label>
+                    <select class="form-select" @bind="selectedAttendanceId">
+                        <option value="0">-- Chọn ngày --</option>
+                        @foreach (var a in monthRecords)
+                        {
+                            <option value="@a.Id">@a.WorkDate.ToString("dd/MM/yyyy") (@a.ActualWorkDays.ToString("0.#") công)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-sm-6 d-flex gap-2 justify-content-end">
+                    <button class="btn btn-outline-secondary" @onclick="Discard">Bỏ qua</button>
+                    @* HUMAN-IN-THE-LOOP: chỉ nút này mới ghi CSDL *@
+                    <button class="btn btn-primary" @onclick="ConfirmSaveAsync" disabled="@(selectedAttendanceId == 0 || isSaving)">
+                        <i class="bi bi-check2 me-1"></i>Xác nhận lưu
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(saveMessage))
+    {
+        <div class="alert @(saveOk ? "alert-success" : "alert-danger") py-2 mt-3 small">@saveMessage</div>
+    }
+</div>
+
+@code {
+    private readonly CancellationTokenSource _cts = new();
+    private DateTime selectedMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private bool isLoading, isSaving, saveOk;
+    private string? errorMessage, draftNote, saveMessage;
+    private int selectedAttendanceId;
+    private List<TimeAttendance> monthRecords = new();
+
+    private async Task RequestAdviceAsync()
+    {
+        var employeeId = UserSession.CurrentEmployeeId;
+        if (employeeId is null)
+        {
+            errorMessage = "Vui lòng đăng nhập bằng tài khoản nhân viên.";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = draftNote = saveMessage = null;
+
+        // Use Case không bao giờ ném lỗi — luôn trả về AiAdviceResult.
+        var result = await GetAdvice.ExecuteAsync(employeeId.Value, selectedMonth.Month, selectedMonth.Year, _cts.Token);
+
+        if (result.IsSuccess)
+        {
+            draftNote = result.Advice;
+            monthRecords = (await AttendanceRepo.GetAttendancesByEmployeeAsync(employeeId.Value, selectedMonth.Month, selectedMonth.Year))
+                .OrderBy(a => a.WorkDate).ToList();
+        }
+        else
+        {
+            errorMessage = result.ErrorMessage;
+        }
+
+        isLoading = false;
+    }
+
+    private async Task ConfirmSaveAsync()
+    {
+        if (UserSession.CurrentEmployeeId is not int employeeId || string.IsNullOrWhiteSpace(draftNote)) return;
+
+        isSaving = true;
+        (saveOk, saveMessage) = await SaveNote.ExecuteAsync(selectedAttendanceId, employeeId, draftNote);
+        if (saveOk) draftNote = null;
+        isSaving = false;
+    }
+
+    private void Discard()
+    {
+        draftNote = null;
+        selectedAttendanceId = 0;
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+}

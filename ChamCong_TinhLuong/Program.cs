@@ -1,5 +1,7 @@
 using ChamCong_TinhLuong.Components;
+using ChamCong_TinhLuong.Infrastructure;
 using ChamCong_TinhLuong.Plugins.DataStore.SQL;
+using ChamCong_TinhLuong.UseCases.Employees;
 using ChamCong_TinhLuong.UseCases.Payroll;
 using ChamCong_TinhLuong.UseCases.PluginInterfaces;
 using ChamCong_TinhLuong.UseCases.Services;
@@ -45,10 +47,11 @@ namespace ChamCong_TinhLuong
             builder.Services.AddTransient<CalculatePayrollUseCase>();
             builder.Services.AddTransient<LockPayrollPeriodUseCase>();
             builder.Services.AddTransient<ViewEmployeePayslipUseCase>();
+            builder.Services.AddTransient<SaveEmployeeWithContractUseCase>();
 
             // 5. Register AI Copilot & IChatClient (Week 07 Milestone)
-            builder.Services.AddSingleton<Microsoft.Extensions.AI.IChatClient, DefaultHrChatClient>();
-            builder.Services.AddTransient<ExplainPayslipWithAIUseCase>();
+            //    Provider/Endpoint/Model đọc từ section "AI"; ApiKey chỉ đọc từ User Secrets hoặc biến môi trường.
+            builder.Services.AddHrAiServices(builder.Configuration);
 
             var app = builder.Build();
 
